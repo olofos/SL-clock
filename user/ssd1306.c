@@ -1,13 +1,22 @@
 // Based on https://github.com/SonalPinto/Arduino_SSD1306_OLED
 
 #include <stdint.h>
+#include <string.h>
 
-#include "i2c-master.h"
+//#include "i2c-master.h"
+
+#include "brzo_i2c.h"
+
 #include "ssd1306.h"
 #include "ssd1306-cmd.h"
-#include "ssd1306-internal.h"
+
+#include "framebuffer.h"
+#include "fonts.h"
 
 #include "logo-paw-64x64.h"
+
+#include "log.h"
+#define LOG_SYS LOG_SYS_SSD1306
 
 #define pgm_read_byte(p) (*(p))
 
@@ -44,7 +53,7 @@ const uint8_t ssd1306_init_seq[] PROGMEM = {
     0x12,
     // set contrast
     OLED_CMD_SET_CONTRAST,
-    0x00,
+    0x03,
 
     // Set display to enable rendering from GDDRAM (Graphic Display Data RAM)
     OLED_CMD_DISPLAY_RAM,
@@ -52,8 +61,7 @@ const uint8_t ssd1306_init_seq[] PROGMEM = {
     OLED_CMD_DISPLAY_NORMAL,
     // Default oscillator clock
     OLED_CMD_SET_DISPLAY_CLK_DIV,
-//    0x80,
-    0xF0,
+    0x80,
     // Enable the charge pump
     OLED_CMD_SET_CHARGE_PUMP,
     0x14,
@@ -70,162 +78,148 @@ const uint8_t ssd1306_init_seq[] PROGMEM = {
     OLED_CMD_DISPLAY_ON,
 };
 
-static const struct ssd1306_frame_t full_frame = { .col_start = 0x00, .col_end = 0x7F , .row_start = 0x00, .row_end = 0x07, .offset = 0x00 };
+static uint8_t framebuffer_full[FB_SIZE + 1] = {[0] = OLED_CONTROL_BYTE_DATA_STREAM};
+uint8_t *framebuffer = &framebuffer_full[1];
+
+void fb_set_pixel(int16_t x,int16_t y,int8_t color)
+{
+    if((0 <= x) && (x < FB_WIDTH) && (0 <= y) && (y < FB_HEIGHT))
+    {
+        const uint16_t n = x + FB_WIDTH * (y / 8);
+        const uint8_t m = 1 << (y % 8);
+
+        if(color)
+        {
+            framebuffer[n] |= m;
+        } else {
+            framebuffer[n] &= ~m;
+        }
+    }
+}
+
+void fb_display(void)
+{
+    const uint8_t init[] = {
+        OLED_CONTROL_BYTE_CMD_STREAM,
+        OLED_CMD_SET_COLUMN_RANGE, 0, 0x7F,
+        OLED_CMD_SET_PAGE_RANGE, 0, 7,
+        OLED_CMD_SET_DISPLAY_OFFSET, 0,
+    };
+
+    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
+    brzo_i2c_write(init, sizeof(init), 0);
+    brzo_i2c_end_transaction();
+
+
+    framebuffer_full[0] = OLED_CONTROL_BYTE_DATA_STREAM;
+
+    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
+    brzo_i2c_write(framebuffer_full, sizeof(framebuffer_full), 0);
+    brzo_i2c_end_transaction();
+}
+
+void fb_clear(void)
+{
+    memset(framebuffer, 0, sizeof(framebuffer_full) - 1);
+}
+
+
+
+static void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
+{
+    uint8_t raster_height = 1 + ((h - 1) / 8);
+    int8_t offset = y & 0x07;
+
+    for(uint16_t i = 0; i < len; i++)
+    {
+        uint8_t c = *data++;
+
+        int16_t x_pos = x + (i / raster_height);
+        int16_t data_pos = x_pos + ((y >> 3) + (i % raster_height)) * FB_WIDTH;
+
+        if((0 <= x_pos) && (x_pos < FB_WIDTH))
+        {
+            if((0 <= data_pos) && (data_pos < FB_SIZE))
+            {
+                framebuffer[data_pos] |= c << offset;
+            }
+            if((0 <= data_pos + FB_WIDTH) && (data_pos + FB_WIDTH))
+            {
+                framebuffer[data_pos + FB_WIDTH] |= c >> (8 - offset);
+            }
+        }
+    }
+}
+
+void fb_draw_string(int16_t x, int16_t y, const char *text, const uint8_t *font_data)
+{
+    const uint8_t char_height = font_data[FONT_HEIGHT_POS];
+    const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
+    const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
+    const uint16_t jump_table_size = char_num * FONT_JUMPTABLE_BYTES;
+
+    uint8_t c;
+
+    while((c = *text++))
+    {
+        if(c >= first_char && (c - first_char) < char_num)
+        {
+            c -= first_char;
+
+            const uint8_t *jump_table_entry = font_data + FONT_JUMPTABLE_START + c * FONT_JUMPTABLE_BYTES;
+
+            const uint16_t char_index = (jump_table_entry[FONT_JUMPTABLE_MSB] << 8) | jump_table_entry[FONT_JUMPTABLE_LSB];
+            const uint8_t char_bytes = jump_table_entry[FONT_JUMPTABLE_SIZE];
+            const uint8_t char_width = jump_table_entry[FONT_JUMPTABLE_WIDTH];
+
+            if(char_index != 0xFFFF)
+            {
+                const uint8_t *char_p = font_data + FONT_JUMPTABLE_START + jump_table_size + char_index;
+                fb_blit(x, y, char_width, char_height, char_p, char_bytes);
+            }
+
+            x += char_width;
+        }
+    }
+}
+
+uint16_t fb_string_length(const char *text, const uint8_t *font_data)
+{
+    const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
+    const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
+    const uint16_t jump_table_size = char_num * FONT_JUMPTABLE_BYTES;
+
+    uint8_t c;
+    uint16_t len;
+
+    while((c = *text++))
+    {
+        if(c >= first_char && (c - first_char) < char_num)
+        {
+            c -= first_char;
+            const uint8_t *jump_table_entry = font_data + FONT_JUMPTABLE_START + c * FONT_JUMPTABLE_BYTES;
+            len += jump_table_entry[FONT_JUMPTABLE_WIDTH];
+        }
+    }
+    return len;
+}
 
 void ssd1306_init(void)
 {
-    // Begin the I2C comm with SSD1306's address (SLA+Write)
-    i2c_start_wait(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_P(ssd1306_init_seq, sizeof(ssd1306_init_seq) / sizeof(ssd1306_init_seq[0]));
-    i2c_stop();
+    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
+    brzo_i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq), 0);
+    brzo_i2c_end_transaction();
 }
 
-void ssd1306_setup_frame(const struct ssd1306_frame_t frame)
+void fb_splash(void)
 {
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_CMD_STREAM);
-    i2c_write_byte(OLED_CMD_SET_COLUMN_RANGE);
-    i2c_write_byte(frame.col_start);
-    i2c_write_byte(frame.col_end);
+    fb_clear();
 
-    i2c_write_byte(OLED_CMD_SET_PAGE_RANGE);
-    i2c_write_byte(frame.row_start);
-    i2c_write_byte(frame.row_end);
-
-    i2c_write_byte(OLED_CMD_SET_DISPLAY_OFFSET);
-    i2c_write_byte(frame.offset);
-    i2c_stop();
-}
-
-
-void ssd1306_bitmap_begin(void)
-{
-    ssd1306_setup_frame(full_frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-}
-
-
-
-void ssd1306_bitmap_end(void)
-{
-    i2c_stop();
-}
-
-
-void ssd1306_bitmap_P(const uint8_t *buf, uint8_t cols, uint8_t rows, uint8_t x, uint8_t y)
-{
-    const struct ssd1306_frame_t frame = {
-        .col_start = x,
-        .col_end = x + cols - 1,
-        .row_start = y,
-        .row_end = y + rows - 1,
-        .offset = 0x00
-    };
-
-    ssd1306_setup_frame(frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-    i2c_write_P(buf, (uint16_t)cols * rows);
-    i2c_stop();
-}
-
-void ssd1306_bitmap_full_P(const uint8_t *buf)
-{
-    ssd1306_setup_frame(full_frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-    i2c_write_P(buf, 1024);
-    i2c_stop();
-}
-
-void ssd1306_clear(void)
-{
-    ssd1306_setup_frame(full_frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-    for(uint16_t i=0; i < 1024; i++)
+    for(int y = 0; y < 8; y++)
     {
-        i2c_write_byte(0);
-    }
-    i2c_stop();
-}
-
-void ssd1306_splash(void)
-{
-    ssd1306_clear();
-
-    const struct ssd1306_frame_t frame = { .col_start = 32, .col_end = 95 , .row_start = 0, .row_end = 7, .offset = 0 };
-
-    ssd1306_setup_frame(frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-    i2c_write_P(paw_64x64, (uint16_t)64 * 8);
-
-    i2c_stop();
-
-}
-
-// Text
-
-void ssd1306_text_putc(char c)
-{
-    i2c_write_P(&font[5*(uint8_t)c], 5);
-    i2c_write_byte(0);
-}
-
-
-inline void ssd1306_text_start(uint8_t x, uint8_t y)
-{
-    const struct ssd1306_frame_t frame = { .col_start = x, .col_end = 0x7F , .row_start = y, .row_end = y, .offset = 0 };
-    ssd1306_setup_frame(frame);
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
-}
-
-inline void ssd1306_text_end(void)
-{
-    i2c_stop();
-}
-
-
-void ssd1306_puts(const char* str, uint8_t x, uint8_t y)
-{
-    ssd1306_text_start(x, y);
-
-    char c;
-    while((c = *str++))
-    {
-        ssd1306_text_putc(c);
+        fb_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
     }
 
-    ssd1306_text_end();
+    fb_display();
 }
 
-void ssd1306_puts_P(const char* str, uint8_t x, uint8_t y)
-{
-    ssd1306_text_start(x, y);
-
-    char c;
-    while((c = pgm_read_byte(str++)))
-    {
-        ssd1306_text_putc(c);
-    }
-
-    ssd1306_text_end();
-}
-
-void ssd1306_putc(const char c, uint8_t x, uint8_t y)
-{
-    ssd1306_text_start(x, y);
-
-    ssd1306_text_putc(c);
-
-    ssd1306_text_end();
-}

@@ -13,5 +13,6 @@ void fb_clear(void);
 void fb_splash(void);
 
 void fb_draw_string(int16_t x, int16_t y, const char *text, const uint8_t *font_data);
+uint16_t fb_string_length(const char *text, const uint8_t *font_data);
 
 #endif

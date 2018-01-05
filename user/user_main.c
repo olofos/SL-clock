@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-//#include <apps/sntp.h>
-//#include <apps/sntp_time.h>
 #include <esp_common.h>
 #include <uart.h>
+
+#include "brzo_i2c.h"
 
 #include "http-client.h"
 #include "timezone-db.h"
@@ -16,8 +16,9 @@
 #include "keys.h"
 #include "cbuf.h"
 #include "console.h"
-#include "i2c-master.h"
 #include "ssd1306.h"
+#include "fonts.h"
+#include "framebuffer.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_MAIN
@@ -69,28 +70,33 @@ uint32 user_rf_cal_sector_set(void)
 *******************************************************************************/
 
 
-
 void display_task(void *pvParameters)
 {
-    i2c_master_init();
-
+    brzo_i2c_setup(200);
     ssd1306_init();
-    ssd1306_splash();
+    fb_splash();
+    fb_display();
 
-    vTaskDelayMs(3000);
+    vTaskDelayMs(1000);
 
-    ssd1306_clear();
-
-    uint8_t n = 0;
     for(;;)
     {
+        fb_clear();
+
         char str[22];
-        char tstr[9];
+        char tstr[6];
         time_t now = time(0);
 
-        strftime(tstr, sizeof(tstr), "%H:%M:%S", localtime(&now));
+        if(now & 0x01)
+        {
+            strftime(tstr, sizeof(tstr), "%H:%M", localtime(&now));
+        } else {
+            strftime(tstr, sizeof(tstr), "%H %M", localtime(&now));
+        }
         sprintf(str, "%s", tstr);
-        ssd1306_puts(str, 0, 0);
+
+        uint16_t len = fb_string_length(str, Monospaced_plain_28);
+        fb_draw_string(64 - (len/2),0,str,Monospaced_plain_28);
 
         for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
         {
@@ -99,22 +105,19 @@ void display_task(void *pvParameters)
             if(t > 0)
             {
 
-                strftime(tstr, sizeof(tstr), "%H:%M:%S", localtime(&t));
+                strftime(tstr, sizeof(tstr), "%H:%M", localtime(&t));
             } else {
-                strcpy(tstr,"No departure");
+                strcpy(tstr,"--:--");
             }
 
-            int n = sprintf(str, "%s: %s", journey->line, tstr);
-            for(; n < sizeof(str)-1; n++)
-            {
-                str[n] = ' ';
-            }
-            str[sizeof(str)-1] = 0;
+            sprintf(str, "%s: %s", journey->line, tstr);
 
-            ssd1306_puts(str,0,i+1);
+
+            fb_draw_string(0, 32 + 16 * i, str, Monospaced_bold_16);
         }
 
-        vTaskDelayMs(500);
+        fb_display();
+        vTaskDelayMs(250);
     }
 }
 
