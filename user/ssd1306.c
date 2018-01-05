@@ -125,10 +125,15 @@ void fb_clear(void)
 
 
 
-static void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
+void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
 {
     uint8_t raster_height = 1 + ((h - 1) / 8);
     int8_t offset = y & 0x07;
+
+    if(!len)
+    {
+        len = w * raster_height;
+    }
 
     for(uint16_t i = 0; i < len; i++)
     {
@@ -151,12 +156,37 @@ static void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t 
     }
 }
 
-void fb_draw_string(int16_t x, int16_t y, const char *text, const uint8_t *font_data)
+void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum alignment alignment)
+{
+    if(alignment & FB_ALIGN_CENTER_H)
+    {
+        x -= icon->width/2;
+    }
+
+    if(alignment & FB_ALIGN_CENTER_V)
+    {
+        y -= icon->height / 2;
+    }
+
+    fb_blit(x, y, icon->width, icon->height, icon->data, 0);
+}
+
+void fb_draw_string(int16_t x, int16_t y, const char *text, const uint8_t *font_data, enum alignment alignment)
 {
     const uint8_t char_height = font_data[FONT_HEIGHT_POS];
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
     const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
     const uint16_t jump_table_size = char_num * FONT_JUMPTABLE_BYTES;
+
+    if(alignment & FB_ALIGN_CENTER_H)
+    {
+        x -= fb_string_length(text, font_data);
+    }
+
+    if(alignment & FB_ALIGN_CENTER_V)
+    {
+        y -= char_height / 2;
+    }
 
     uint8_t c;
 
@@ -211,6 +241,7 @@ void ssd1306_init(void)
     brzo_i2c_end_transaction();
 }
 
+#if 0
 void fb_splash(void)
 {
     fb_clear();
@@ -222,4 +253,18 @@ void fb_splash(void)
 
     fb_display();
 }
+#endif
 
+#include "icon-boat-large.h"
+#include "icon-bus-large.h"
+
+
+void fb_splash(void)
+{
+    fb_clear();
+
+    fb_blit(5, 0, ICON_BOAT_LARGE_WIDTH, ICON_BOAT_LARGE_HEIGHT, icon_boat_large, 0);
+    fb_blit(0, 32, ICON_BUS_LARGE_WIDTH, ICON_BUS_LARGE_HEIGHT, icon_bus_large, 0);
+
+    fb_display();
+}

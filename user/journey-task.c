@@ -127,13 +127,17 @@ void journey_task(void *pvParameters)
                       (journey->departures[journey->next_departure] > 0) &&
                       (journey->departures[journey->next_departure] - now <= 0))
                 {
-                    LOG("%d: Departure %d left at %lu", j, journey->next_departure, (unsigned long)journey->departures[journey->next_departure]);
+                    char buf[32];
+                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[journey->next_departure]));
+
+                    LOG("%d: Departure %d left at %s", j, journey->next_departure, buf);
 
                     journey->next_departure++;
 
                     if((journey->next_departure < JOURNEY_MAX_DEPARTURES) && (journey->departures[journey->next_departure] > 0))
                     {
-                        LOG("%d: Next departure is at %lu", j, (unsigned long)journey->departures[journey->next_departure]);
+                        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[journey->next_departure]));
+                        LOG("%d: Next departure is at %s", j, buf);
                     }
                 }
 
