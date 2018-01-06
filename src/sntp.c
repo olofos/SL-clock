@@ -214,13 +214,18 @@ void sntp_task(void *param)
             vTaskDelayMs(100);
         }
 
-        if(sntp_request(servers[0]) == SNTP_ERR_KOD)
+        int ret = sntp_request(servers[0]);
+        if(ret == SNTP_ERR_KOD)
         {
             // TODO
             if(delay < 3600)
             {
                 delay *= 2;
             }
+        } else if(ret == ERR_TIMEOUT) {
+            delay = 5;
+        } else {
+            delay = SNTP_DELAY;
         }
 
         LOG("xPortGetFreeHeapSize: %d", xPortGetFreeHeapSize());
