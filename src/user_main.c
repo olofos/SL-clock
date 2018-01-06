@@ -86,8 +86,6 @@ void journey_test_task(void *pvParameters)
 {
     for(;;)
     {
-        time_t now = time(0);
-
         for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
         {
             if(!(rand() & 0x03))
@@ -182,21 +180,12 @@ void display_task(void *pvParameters)
     ssd1306_init();
     fb_splash();
 
-
-    int x_shift[2] = {0,0};
-    const int y_shift[] = {24, 44};
-
     const struct icon clock_icon = { .width = ICON_CLOCK_LARGE_WIDTH, .height = ICON_CLOCK_LARGE_HEIGHT, .data = icon_clock_large, };
 
     const struct icon journey_icons[2] = {
         { .width = ICON_BOAT_LARGE_WIDTH, .height = ICON_BOAT_LARGE_HEIGHT, .data = icon_boat_large, },
         { .width = ICON_BUS_LARGE_WIDTH, .height = ICON_BUS_LARGE_HEIGHT, .data = icon_bus_large, },
     };
-
-    time_t curr[2], next[2];
-    int state[2] = {STATE_DISPLAY, STATE_DISPLAY};
-
-    curr[0] = next[0] = journies[0].departures[journies[0].next_departure];
 
     struct journey_display_state states[2] = {
         { .x_shift = 0, .y_shift = 36, .state = STATE_DISPLAY },
@@ -229,52 +218,6 @@ void display_task(void *pvParameters)
         fb_display();
         vTaskDelayMs(25);
     }
-
-
-#if 0
-    vTaskDelayMs(1000*20);
-
-    for(;;)
-    {
-        fb_clear();
-
-        char str[22];
-        char tstr[6];
-        time_t now = time(0);
-
-        if(now & 0x01)
-        {
-            strftime(tstr, sizeof(tstr), "%H:%M", localtime(&now));
-        } else {
-            strftime(tstr, sizeof(tstr), "%H %M", localtime(&now));
-        }
-        sprintf(str, "%s", tstr);
-
-        uint16_t len = fb_string_length(str, Monospaced_plain_28);
-        fb_draw_string(64 - (len/2),0,str,Monospaced_plain_28);
-
-        for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
-        {
-            struct journey *journey = &journies[i];
-            time_t t = journey->departures[journey->next_departure];
-            if(t > 0)
-            {
-
-                strftime(tstr, sizeof(tstr), "%H:%M", localtime(&t));
-            } else {
-                strcpy(tstr,"--:--");
-            }
-
-            sprintf(str, "%s: %s", journey->line, tstr);
-
-
-            fb_draw_string(0, 32 + 16 * i, str, Monospaced_bold_16);
-        }
-
-        fb_display();
-        vTaskDelayMs(250);
-    }
-#endif
 }
 
 void user_init(void)
@@ -326,7 +269,6 @@ void user_init(void)
     xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
     xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
 
-//    xTaskCreate(&test_task, "test_task", 384, NULL, 6, NULL);
-
+    // xTaskCreate(&test_task, "test_task", 384, NULL, 6, NULL);
     // xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
 }
