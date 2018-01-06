@@ -1,5 +1,5 @@
 *~
 .output
 bin/
-user/keys.h
+src/keys.h
 
