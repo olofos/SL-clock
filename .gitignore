@@ -1,5 +1,5 @@
 *~
-.output
+obj/
 bin/
 src/keys.h
 
