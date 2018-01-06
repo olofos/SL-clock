@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef ARDUINO
 #include <esp_common.h>
-#include <gpio.h>
+#include "gpio.h"
 
 // #include <eagle_soc.h>
 // #include <ets_sys.h>

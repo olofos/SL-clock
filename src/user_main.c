@@ -14,8 +14,6 @@
 #include "journey-task.h"
 #include "sntp.h"
 #include "keys.h"
-#include "cbuf.h"
-#include "console.h"
 #include "ssd1306.h"
 #include "fonts.h"
 #include "framebuffer.h"

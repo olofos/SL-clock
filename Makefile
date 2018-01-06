@@ -1,133 +1,65 @@
-#############################################################
-# Required variables for each makefile
-# Discard this section from all parent makefiles
-# Expected variables (with automatic defaults):
-#   CSRCS (all "C" files in the dir)
-#   SUBDIRS (all subdirs with a Makefile)
-#   GEN_LIBS - list of libs to be generated ()
-#   GEN_IMAGES - list of object file images to be generated ()
-#   GEN_BINS - list of binaries to be generated ()
-#   COMPONENTS_xxx - a list of libs/objs in the form
-#     subdir/lib to be extracted and rolled up into
-#     a generated lib/image xxx.a ()
-#
-TARGET = eagle
-#FLAVOR = release
-FLAVOR = debug
+SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c journey.c journey-task.c\
+    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c
 
-EXTRA_CCFLAGS += -std=gnu99
-
-ifndef PDIR # {
-GEN_IMAGES= eagle.app.v6.out
-GEN_BINS= eagle.app.v6.bin
-SPECIAL_MKTARGETS=$(APP_MKTARGETS)
-SUBDIRS=    \
-	user    \
-	sample_lib \
-	driver
-
-endif # } PDIR
-
-LDDIR = $(SDK_PATH)/ld
-
-CCFLAGS += -Os
-
-TARGET_LDFLAGS =		\
-	-nostdlib		\
-	-Wl,-EL \
-	--longcalls \
-	--text-section-literals
-
-ifeq ($(FLAVOR),debug)
-    TARGET_LDFLAGS += -g -O2
-endif
-
-ifeq ($(FLAVOR),release)
-    TARGET_LDFLAGS += -g -O0
-endif
-
-COMPONENTS_eagle.app.v6 = \
-	user/libuser.a  \
-	driver/libdriver.a \
-	sample_lib/libsample.a
-
-LINKFLAGS_eagle.app.v6 = \
-	-L$(SDK_PATH)/lib        \
-	-Wl,--gc-sections   \
-	-nostdlib	\
-    -T$(LD_FILE)   \
-	-Wl,--no-check-sections	\
-    -u call_user_start	\
-	-Wl,-static						\
-	-Wl,--start-group					\
-	-lcirom \
-	-lcrypto	\
-	-lespconn	\
-	-lespnow	\
-	-lfreertos	\
-	-lgcc					\
-	-lhal					\
-	-ljson	\
-	-llwip	\
-	-lmain	\
-	-lmirom	\
-	-lnet80211	\
-	-lnopoll	\
-	-lphy	\
-	-lpp	\
-	-lpwm	\
-	-lsmartconfig	\
-	-lspiffs	\
-	-lssl	\
-	-lwpa	\
-	-lwps		\
-	$(DEP_LIBS_eagle.app.v6)					\
-	-Wl,--end-group
-
-DEPENDS_eagle.app.v6 = \
-                $(LD_FILE) \
-                $(LDDIR)/eagle.rom.addr.v6.ld
-
-#############################################################
-# Configuration i.e. compile options etc.
-# Target specific stuff (defines etc.) goes in here!
-# Generally values applying to a tree are captured in the
-#   makefile at its root level - these are then overridden
-#   for a subtree within the makefile rooted therein
-#
-
-#UNIVERSAL_TARGET_DEFINES =		\
-
-# Other potential configuration flags include:
-#	-DTXRX_TXBUF_DEBUG
-#	-DTXRX_RXBUF_DEBUG
-#	-DWLAN_CONFIG_CCX
-CONFIGURATION_DEFINES =	-DICACHE_FLASH
-
-DEFINES +=				\
-	$(UNIVERSAL_TARGET_DEFINES)	\
-	$(CONFIGURATION_DEFINES)
-
-DDEFINES +=				\
-	$(UNIVERSAL_TARGET_DEFINES)	\
-	$(CONFIGURATION_DEFINES)
+TARGET=user
 
 
-#############################################################
-# Recursion Magic - Don't touch this!!
-#
-# Each subtree potentially has an include directory
-#   corresponding to the common APIs applicable to modules
-#   rooted at that subtree. Accordingly, the INCLUDE PATH
-#   of a module can only contain the include directories up
-#   its parent path, and not its siblings
-#
-# Required for each makefile to inherit from the parent
-#
+SRCDIR := src
+OBJDIR := obj
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include
-sinclude $(SDK_PATH)/Makefile
+SRC := $(SOURCES:%.c=$(SRCDIR)/%.c)
+OBJ := $(SOURCES:%.c=$(OBJDIR)/%.o)
 
-.PHONY: FORCE
-FORCE:
+AR = xtensa-lx106-elf-ar
+CC = xtensa-lx106-elf-gcc
+NM = xtensa-lx106-elf-nm
+OBJCOPY = xtensa-lx106-elf-objcopy
+OBJDUMP = xtensa-lx106-elf-objdump
 
+
+CFLAGS = -DPROGMEM= -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
+         -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
+
+LDFILE = ld/eagle.app.v6.ld
+
+LDFLAGS = -L$(SDK_PATH)/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -ljson -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lwps -Wl,--end-group
+
+INCLUDES := $(INCLUDES)
+INCLUDES += -I$(SDK_PATH)/include
+INCLUDES += -I$(SDK_PATH)/extra_include
+INCLUDES += -I$(SDK_PATH)/driver_lib/include
+INCLUDES += -I$(SDK_PATH)/include/espressif
+INCLUDES += -I$(SDK_PATH)/include/lwip
+INCLUDES += -I$(SDK_PATH)/include/lwip/ipv4
+INCLUDES += -I$(SDK_PATH)/include/lwip/ipv6
+INCLUDES += -I$(SDK_PATH)/include/nopoll
+INCLUDES += -I$(SDK_PATH)/include/spiffs
+INCLUDES += -I$(SDK_PATH)/include/ssl
+INCLUDES += -I$(SDK_PATH)/include/json
+INCLUDES += -I$(SDK_PATH)/include/openssl
+
+.PHONY: all bin flash clean
+
+all: eagle.app.flash.bin
+
+$(OBJDIR)/%.o : $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJDIR)/libuser.a: $(OBJ)
+	$(AR) ru $@ $^
+
+$(OBJDIR)/user.elf : $(OBJDIR)/libuser.a
+	$(CC) $(LDFLAGS) -o $@
+
+eagle.app.flash.bin: $(OBJDIR)/user.elf
+	$(OBJCOPY) --only-section .text -O binary obj/user.elf eagle.app.v6.text.bin
+	$(OBJCOPY) --only-section .rodata -O binary obj/user.elf eagle.app.v6.rodata.bin
+	$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
+	$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
+	python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
+
+flash: eagle.app.flash.bin
+	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 eagle.app.flash.bin 0x20000 eagle.app.v6.irom0text.bin
+
+clean:
+	rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf eagle.app.v6.text.bin eagle.app.v6.rodata.bin eagle.app.v6.data.bin eagle.app.v6.irom0text.bin eagle.app.flash.bin
