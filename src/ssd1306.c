@@ -217,10 +217,9 @@ uint16_t fb_string_length(const char *text, const uint8_t *font_data)
 {
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
     const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
-    const uint16_t jump_table_size = char_num * FONT_JUMPTABLE_BYTES;
 
     uint8_t c;
-    uint16_t len;
+    uint16_t len = 0;
 
     while((c = *text++))
     {
@@ -234,14 +233,15 @@ uint16_t fb_string_length(const char *text, const uint8_t *font_data)
     return len;
 }
 
-void ssd1306_init(void)
+int ssd1306_init(void)
 {
     brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
     brzo_i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq), 0);
-    brzo_i2c_end_transaction();
+    int ret = brzo_i2c_end_transaction();
+
+    return ret;
 }
 
-#if 0
 void fb_splash(void)
 {
     fb_clear();
@@ -250,21 +250,6 @@ void fb_splash(void)
     {
         fb_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
     }
-
-    fb_display();
-}
-#endif
-
-#include "icon-boat-large.h"
-#include "icon-bus-large.h"
-
-
-void fb_splash(void)
-{
-    fb_clear();
-
-    fb_blit(5, 0, ICON_BOAT_LARGE_WIDTH, ICON_BOAT_LARGE_HEIGHT, icon_boat_large, 0);
-    fb_blit(0, 32, ICON_BUS_LARGE_WIDTH, ICON_BUS_LARGE_HEIGHT, icon_bus_large, 0);
 
     fb_display();
 }
