@@ -4,9 +4,6 @@
 #include <string.h>
 
 #include <esp_common.h>
-//#include <esplibs/libmain.h>
-//#include <esp/uart.h>
-//#include <FreeRTOS.h>
 
 #include <lwip/err.h>
 #include <lwip/sockets.h>
@@ -17,6 +14,8 @@
 #include "http-client.h"
 
 #include "log.h"
+
+xSemaphoreHandle http_mutex = 0;
 
 #define LOG_SYS LOG_SYS_HTTP
 

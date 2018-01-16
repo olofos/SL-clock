@@ -5,6 +5,7 @@
 #include <sys/time.h>
 
 #include "sntp.h"
+#include "status.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_SNTP
@@ -155,6 +156,8 @@ static int sntp_request(const char *server)
         LOG("Got timestamp %lu", t);
 
         sntp_update_rtc(t, us);
+
+        app_status.obtained_time = 1;
     } else {
         LOG("Length of data did not match SNTP_MAX_DATA_LEN, received len %u", len);
 
@@ -209,8 +212,7 @@ void sntp_task(void *param)
 
     for(;;)
     {
-        /* Wait until we have joined AP and are assigned an IP */
-        while (wifi_station_get_connect_status() != STATION_GOT_IP) {
+        while (!app_status.wifi_connected) {
             vTaskDelayMs(100);
         }
 

@@ -2,6 +2,8 @@
 #define HTTP_CLIENT_H_
 
 #include <stdint.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 enum http_transfer_encoding
 {
@@ -30,5 +32,7 @@ int http_close(struct HTTPRequest *request);
 size_t http_read(struct HTTPRequest *request, void *buf, size_t count);
 int http_getc(struct HTTPRequest *request);
 int http_peek(struct HTTPRequest *request);
+
+extern xSemaphoreHandle http_mutex;
 
 #endif

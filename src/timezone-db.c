@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <esp_common.h>
-#include <apps/sntp_time.h>
 
 #include "json.h"
 #include "json-util.h"
 #include "keys.h"
 #include "timezone-db.h"
+#include "status.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_TZDB
@@ -40,21 +40,58 @@ static void construct_http_request(struct HTTPRequest *request, char buf[], size
     request->port = 80;
 }
 
+
 static int set_timezone(const char *abbrev, int offset, time_t end)
 {
     time_t now = time(0);
 
-    sntp_set_timezone(offset);
-
-    if((0 < end - now) && (end - now < 24 * 60 * 60))
+    if(strlen(abbrev) < 3)
     {
-        timezone_next_update = end + 5;
+        LOG("Error: Timezone abbreviation '%s' should be at least three characters", abbrev);
+        timezone_next_update = now + 60 * 60;
     } else {
-        timezone_next_update = now + 24 * 60 * 60;
+        char buf[32];
+
+        snprintf(buf, sizeof(buf), "%s%d", abbrev, -(offset/3600));
+        setenv("TZ", buf, 1);
+        tzset();
+
+        if((0 < end - now) && (end - now < 24 * 60 * 60))
+        {
+            timezone_next_update = end + 5;
+        } else {
+            timezone_next_update = now + 24 * 60 * 60;
+        }
+
+        LOG("New timezone: %s", buf);
+
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&timezone_next_update));
+
+        LOG("Next update at %s", buf);
+
+        app_status.obtained_tz = 1;
     }
 
     return 0;
 }
+
+
+// static int set_timezone(const char *abbrev, int offset, time_t end)
+// {
+//     time_t now = time(0);
+
+//     sntp_set_timezone(offset);
+//     app_status.obtained_tz = 1;
+
+//     if((0 < end - now) && (end - now < 24 * 60 * 60))
+//     {
+//         timezone_next_update = end + 5;
+//     } else {
+//         timezone_next_update = now + 24 * 60 * 60;
+//     }
+
+//     return 0;
+// }
 
 static int timezone_db_parse_json(json_stream *json)
 {
@@ -139,7 +176,6 @@ static int timezone_db_parse_json(json_stream *json)
 static int update_timezone(void)
 {
     struct HTTPRequest request;
-//    char buf[256];
     const int buf_size = 256;
     char *buf = malloc(buf_size);
 
@@ -176,7 +212,11 @@ static int update_timezone(void)
 void timezone_db_task(void *pvParameters)
 {
     LOG("Starting TimeZoneDB task");
-    LOG("%d", sizeof(struct HTTPRequest));
+
+    while (!(app_status.wifi_connected && app_status.obtained_time)) {
+        vTaskDelayMs(100);
+    }
+
     for(;;)
     {
         time_t now = time(0);
@@ -186,10 +226,21 @@ void timezone_db_task(void *pvParameters)
             LOG("'now' is in the past, is SNTP started?");
         } else if(now - timezone_next_update > 0)
         {
+
             LOG("Updating timezone");
-            if(update_timezone() < 0)
+
+            if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
             {
-                timezone_next_update = now + 60;
+                LOG("Took HTTP mutex");
+                int ret = update_timezone();
+                LOG("Give back HTTP mutex");
+
+                xSemaphoreGive(http_mutex);
+
+                if(ret < 0)
+                {
+                    timezone_next_update = now + 60;
+                }
             }
         }
 

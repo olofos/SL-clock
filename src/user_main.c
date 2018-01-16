@@ -4,10 +4,9 @@
 #include <string.h>
 #include <time.h>
 #include <esp_common.h>
-#include <uart.h>
 
+#include "uart.h"
 #include "brzo_i2c.h"
-
 #include "http-client.h"
 #include "timezone-db.h"
 #include "journey.h"
@@ -17,6 +16,8 @@
 #include "ssd1306.h"
 #include "fonts.h"
 #include "framebuffer.h"
+#include "status.h"
+#include "wifi-task.h"
 
 #include "icon-boat-large.h"
 #include "icon-bus-large.h"
@@ -29,6 +30,12 @@
 
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
+
+struct app_status app_status = {
+    .wifi_connected = 0,
+    .obtained_time = 0,
+    .obtained_tz = 0,
+};
 
 uint32 user_rf_cal_sector_set(void)
 {
@@ -228,15 +235,8 @@ void user_init(void)
 
     LOG("SDK version:%s\n", system_get_sdk_version());
 
-    struct station_config config = {
-        .ssid = WIFI_SSID,
-        .password = WIFI_PASSWORD,
-    };
-
-    wifi_set_opmode(STATION_MODE);
-    wifi_station_set_config(&config);
-
-    setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    //setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    setenv("TZ", "GMT0", 1);
     tzset();
 
     struct journey journies[] = {
@@ -263,7 +263,10 @@ void user_init(void)
         journey_set_journey(i, &journies[i]);
     }
 
+    http_mutex = xSemaphoreCreateMutex();
 
+
+    xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
     xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
     xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
     xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
