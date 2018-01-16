@@ -1,8 +1,7 @@
-SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c journey.c journey-task.c\
-    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c
+SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c icon-noclock-large.c icon-nowifi1-large.c icon-nowifi2-large.c icon-nowifi3-large.c icon-nowifi4-large.c journey.c journey-task.c\
+    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c
 
 TARGET=user
-
 
 SRCDIR := src
 OBJDIR := obj
@@ -22,7 +21,7 @@ CFLAGS = -DPROGMEM= -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno
 
 LDFILE = ld/eagle.app.v6.ld
 
-LDFLAGS = -L$(SDK_PATH)/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -ljson -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lwps -Wl,--end-group
+LDFLAGS = -L$(SDK_PATH)/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lwps -Wl,--end-group
 
 INCLUDES := $(INCLUDES)
 INCLUDES += -I$(SDK_PATH)/include

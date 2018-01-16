@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#define ICON_BUS_LARGE_WIDTH 40
-#define ICON_BUS_LARGE_HEIGHT 32
+#define ICON_BUS_LARGE_WIDTH 33
+#define ICON_BUS_LARGE_HEIGHT 15
 
 extern const uint8_t icon_bus_large[];
 #endif
