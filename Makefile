@@ -37,7 +37,7 @@ INCLUDES += -I$(SDK_PATH)/include/ssl
 INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
-.PHONY: all bin flash clean
+.PHONY: all bin flash clean erase
 
 all: eagle.app.flash.bin
 
@@ -63,7 +63,10 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 	mv eagle.app.flash.bin bin/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
-	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin
+	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
+
+erase:
+	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
 
 clean:
 	rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
