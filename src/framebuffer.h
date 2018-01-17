@@ -19,6 +19,8 @@ struct icon {
     const uint8_t *data;
 };
 
+extern uint8_t *framebuffer;
+
 void fb_set_pixel(int16_t x, int16_t y, int8_t color);
 void fb_display(void);
 
