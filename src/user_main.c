@@ -4,6 +4,9 @@
 #include <string.h>
 #include <time.h>
 #include <esp_common.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "uart.h"
 #include "brzo_i2c.h"
@@ -77,14 +80,37 @@ uint32 user_rf_cal_sector_set(void)
 
     return rf_cal_sec;
 }
-/******************************************************************************
- * FunctionName : user_init
- * Description  : entry of user application, init user function here
- * Parameters   : none
- * Returns      : none
-*******************************************************************************/
 
-void test_task(void *pvParameters)
+
+#define FS_FLASH_SIZE (3*1024*1024-16*1024)
+#define FS_FLASH_ADDR (1*1024*1024)
+#define SECTOR_SIZE (4*1024)
+#define LOG_BLOCK SECTOR_SIZE
+#define LOG_PAGE (128)
+#define FD_BUF_SIZE (32*4)
+#define CACHE_BUF_SIZE (LOG_PAGE+32)*8
+
+void spiffs_fs_init(void)
+{
+    struct esp_spiffs_config config;
+    config.phys_size = FS_FLASH_SIZE;
+    config.phys_addr = FS_FLASH_ADDR;
+    config.phys_erase_block = SECTOR_SIZE;
+    config.log_block_size = LOG_BLOCK;
+    config.log_page_size = LOG_PAGE;
+    config.fd_buf_size = FD_BUF_SIZE * 2;
+    config.cache_buf_size = CACHE_BUF_SIZE;
+
+    int ret = esp_spiffs_init(&config);
+
+    if(ret < 0)
+    {
+        LOG("Could not mount SPIFFS volume (%d)", ret);
+    }
+}
+
+
+void tz_test_task(void *pvParameters)
 {
     for(;;)
     {
@@ -268,38 +294,16 @@ void user_init(void)
     UART_SetBaudrate(0, 115200);
     UART_SetPrintPort(0);
 
+    printf("\n");
     LOG("SDK version:%s\n", system_get_sdk_version());
 
-    //setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    spiffs_fs_init();
+
+
     setenv("TZ", "GMT0", 1);
     tzset();
 
-    struct journey journies[] = {
-        {
-            .line = "80",
-            .stop = "Saltsjöqvarn",
-            .destination = "Nybroplan",
-            .site_id = 1442,
-            .mode = TRANSPORT_MODE_SHIP,
-            .direction = 2,
-        },
-        {
-            .line = "53",
-            .stop = "Henriksdalsberget",
-            .destination = "Karolinska institutet",
-            .site_id = 1450,
-            .mode = TRANSPORT_MODE_BUS,
-            .direction = 2,
-        }
-    };
-
-    for(int i = 0; i < sizeof(journies)/sizeof(journies[0]); i++)
-    {
-        journey_set_journey(i, &journies[i]);
-    }
-
     http_mutex = xSemaphoreCreateMutex();
-
 
     xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
     xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
@@ -307,6 +311,6 @@ void user_init(void)
     xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
     xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
 
-    // xTaskCreate(&test_task, "test_task", 384, NULL, 6, NULL);
+    // xTaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
     // xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
 }
