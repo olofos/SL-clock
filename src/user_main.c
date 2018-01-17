@@ -21,6 +21,7 @@
 #include "framebuffer.h"
 #include "status.h"
 #include "wifi-task.h"
+#include "config.h"
 
 #include "icon-boat-large.h"
 #include "icon-bus-large.h"
@@ -299,6 +300,7 @@ void user_init(void)
 
     spiffs_fs_init();
 
+    config_load("/config.json");
 
     setenv("TZ", "GMT0", 1);
     tzset();

@@ -14,7 +14,6 @@
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
 
-
 #define COUNTRY_NAME 0
 #define ZONE_NAME 1
 #define ABBREVIATION 2
@@ -23,6 +22,7 @@
 #define DST_END 5
 
 static time_t timezone_next_update;
+static char timezone_name[TIMEZONE_NAME_LEN];
 
 static char* nul_strncpy(char *dest, const char *src, size_t n)
 {
@@ -31,9 +31,25 @@ static char* nul_strncpy(char *dest, const char *src, size_t n)
     return dest;
 }
 
+void timezone_set_timezone(const char *name)
+{
+    if(strncmp(name, timezone_name, TIMEZONE_NAME_LEN) != 0)
+    {
+        nul_strncpy(timezone_name, name, TIMEZONE_NAME_LEN);
+
+        timezone_next_update = time(0);
+    }
+}
+
+const char *timezone_get_timezone(void)
+{
+    return timezone_name;
+}
+
+
 static void construct_http_request(struct HTTPRequest *request, char buf[], size_t buf_len)
 {
-    snprintf(buf, buf_len, "/v2/get-time-zone?format=json&key=%s&by=zone&zone=%s&fields=countryName,zoneName,abbreviation,gmtOffset,dst,dstStart,dstEnd", KEY_TIMEZONEDB, TIMEZONE);
+    snprintf(buf, buf_len, "/v2/get-time-zone?format=json&key=%s&by=zone&zone=%s&fields=countryName,zoneName,abbreviation,gmtOffset,dst,dstStart,dstEnd", KEY_TIMEZONEDB, timezone_name);
 
     request->host = "api.timezonedb.com";
     request->path = buf;

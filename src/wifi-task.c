@@ -1,10 +1,18 @@
 #include <esp_common.h>
+#include <string.h>
 
 #include "wifi-task.h"
 #include "status.h"
 #include "keys.h"
+#include "log.h"
+
+#define LOG_SYS LOG_SYS_WIFI
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
+
+char wifi_ssid[WIFI_SSID_LEN];
+char wifi_pass[WIFI_PASS_LEN];
+
 
 static void wifi_handle_event_cb(System_Event_t *evt)
 {
@@ -24,28 +32,25 @@ static void wifi_handle_event_cb(System_Event_t *evt)
              break;
          default:
              break;
- }
+    }
 }
 
 void wifi_task(void *pvParameters)
 {
-    printf("Starting Wi-Fi Controller...\n");
+    LOG("Starting WiFi");
 
     wifi_set_event_handler_cb(wifi_handle_event_cb);
 
-    struct station_config config = {
-        .ssid = WIFI_SSID,
-        .password = WIFI_PASSWORD,
-    };
+    struct station_config config;
+
+    memset(&config, 0, sizeof(config));
+
+    strncpy((char *)&config.ssid, wifi_ssid, WIFI_SSID_LEN);
+    strncpy((char *)&config.password, wifi_pass, WIFI_PASS_LEN);
+
 
     wifi_set_opmode(STATION_MODE);
     wifi_station_set_config(&config);
-
-    // for(int i = 0; i < 3; i++)
-    // {
-    //     wifi_station_disconnect();
-    //     vTaskDelayMs(3000);
-    // }
 
     wifi_station_connect();
 

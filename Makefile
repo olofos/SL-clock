@@ -1,4 +1,4 @@
-SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c icon-noclock-large.c icon-nowifi1-large.c icon-nowifi2-large.c icon-nowifi3-large.c icon-nowifi4-large.c journey.c journey-task.c\
+SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c icon-noclock-large.c icon-nowifi1-large.c icon-nowifi2-large.c icon-nowifi3-large.c icon-nowifi4-large.c journey.c journey-task.c config.c \
     json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c
 
 TARGET=user
