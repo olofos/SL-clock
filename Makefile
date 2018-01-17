@@ -1,4 +1,4 @@
-SOURCES := brzo_i2c.c fonts.c http-client.c icon-boat-large.c icon-bus-large.c icon-clock-large.c icon-noclock-large.c icon-nowifi1-large.c icon-nowifi2-large.c icon-nowifi3-large.c icon-nowifi4-large.c journey.c journey-task.c config.c \
+SOURCES := brzo_i2c.c fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c \
     json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c
 
 TARGET=user
@@ -37,7 +37,7 @@ INCLUDES += -I$(SDK_PATH)/include/ssl
 INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
-.PHONY: all bin flash clean erase
+.PHONY: all bin flash clean erase spiffs-flash spiffs-image
 
 all: eagle.app.flash.bin
 
@@ -64,6 +64,12 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 
 flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
+
+spiffs-image:
+	../mkspiffs/mkspiffs -b 4096 -p 128 -c data/ bin/spiffs.bin
+
+spiffs-flash: spiffs-image
+	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash 0x100000 bin/spiffs.bin
 
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash

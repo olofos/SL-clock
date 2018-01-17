@@ -32,4 +32,7 @@ void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, 
 
 void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum alignment alignment);
 
+struct icon *fb_load_icon_pbm(const char *filename);
+void fb_free_icon(struct icon *);
+
 #endif

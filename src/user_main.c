@@ -23,15 +23,6 @@
 #include "wifi-task.h"
 #include "config.h"
 
-#include "icon-boat-large.h"
-#include "icon-bus-large.h"
-#include "icon-clock-large.h"
-#include "icon-noclock-large.h"
-#include "icon-nowifi1-large.h"
-#include "icon-nowifi2-large.h"
-#include "icon-nowifi3-large.h"
-#include "icon-nowifi4-large.h"
-
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_MAIN
@@ -141,8 +132,6 @@ void journey_test_task(void *pvParameters)
 #define STATE_SHIFT_OUT 1
 #define STATE_SHIFT_IN 2
 
-
-
 void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t *t, int blink)
 {
     char str[6];
@@ -223,18 +212,21 @@ void display_task(void *pvParameters)
     }
     fb_splash();
 
-    const struct icon clock_icon = { .width = ICON_CLOCK_LARGE_WIDTH, .height = ICON_CLOCK_LARGE_HEIGHT, .data = icon_clock_large, };
-    const struct icon noclock_icon = { .width = ICON_NOCLOCK_LARGE_WIDTH, .height = ICON_NOCLOCK_LARGE_HEIGHT, .data = icon_noclock_large, };
-    const struct icon nowifi_icons[] = {
-        { .width = ICON_NOWIFI1_LARGE_WIDTH, .height = ICON_NOWIFI1_LARGE_HEIGHT, .data = icon_nowifi1_large, },
-        { .width = ICON_NOWIFI2_LARGE_WIDTH, .height = ICON_NOWIFI2_LARGE_HEIGHT, .data = icon_nowifi2_large, },
-        { .width = ICON_NOWIFI3_LARGE_WIDTH, .height = ICON_NOWIFI3_LARGE_HEIGHT, .data = icon_nowifi3_large, },
-        { .width = ICON_NOWIFI4_LARGE_WIDTH, .height = ICON_NOWIFI4_LARGE_HEIGHT, .data = icon_nowifi4_large, },
+    fb_clear();
+
+    struct icon *clock_icon = fb_load_icon_pbm("/icons/clock.pbm");
+    struct icon *noclock_icon = fb_load_icon_pbm("/icons/noclock.pbm");
+
+    struct icon *nowifi_icons[] = {
+        fb_load_icon_pbm("/icons/nowifi1.pbm"),
+        fb_load_icon_pbm("/icons/nowifi2.pbm"),
+        fb_load_icon_pbm("/icons/nowifi3.pbm"),
+        fb_load_icon_pbm("/icons/nowifi4.pbm"),
     };
 
-    const struct icon journey_icons[2] = {
-        { .width = ICON_BOAT_LARGE_WIDTH, .height = ICON_BOAT_LARGE_HEIGHT, .data = icon_boat_large, },
-        { .width = ICON_BUS_LARGE_WIDTH, .height = ICON_BUS_LARGE_HEIGHT, .data = icon_bus_large, },
+    struct icon *journey_icons[2] = {
+        fb_load_icon_pbm("/icons/boat.pbm"),
+        fb_load_icon_pbm("/icons/bus.pbm"),
     };
 
     struct journey_display_state states[2] = {
@@ -270,18 +262,18 @@ void display_task(void *pvParameters)
 
             uint32_t n = xTaskGetTickCount() / 33;
 
-            draw_row(20, 10, &nowifi_icons[n & 0x03], &now, 1);
+            draw_row(20, 10, nowifi_icons[n & 0x03], &now, 1);
         } else if(!(app_status.obtained_time && app_status.obtained_tz)) {
             time_t now = 0;
-            draw_row(20, 10, &noclock_icon, &now, 1);
+            draw_row(20, 10, noclock_icon, &now, 1);
         } else {
             time_t now = time(0);
-            draw_row(20, 10, &clock_icon, &now, 1);
+            draw_row(20, 10, clock_icon, &now, 1);
         }
 
         for(int i = 0; i < 2; i++)
         {
-            draw_row(20 + states[i].x_shift, states[i].y_shift, &journey_icons[i], &states[i].curr, 1);
+            draw_row(20 + states[i].x_shift, states[i].y_shift, journey_icons[i], &states[i].curr, 1);
         }
 
         fb_display();
