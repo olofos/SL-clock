@@ -87,7 +87,7 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, const uint8_t *font_
 
     if(alignment & FB_ALIGN_CENTER_H)
     {
-        x -= fb_string_length(text, font_data);
+        x -= fb_string_length(text, font_data) / 2;
     }
 
     if(alignment & FB_ALIGN_CENTER_V)
