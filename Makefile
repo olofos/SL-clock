@@ -5,9 +5,11 @@ TARGET=user
 
 SRCDIR := src
 OBJDIR := obj
+DEPDIR := .deps
 
 SRC := $(SOURCES:%.c=$(SRCDIR)/%.c)
 OBJ := $(SOURCES:%.c=$(OBJDIR)/%.o)
+DEPS := $(SOURCES:%.c=$(DEPDIR)/%.d)
 
 AR = xtensa-lx106-elf-ar
 CC = xtensa-lx106-elf-gcc
@@ -41,8 +43,11 @@ INCLUDES += -I$(SDK_PATH)/include/openssl
 
 all: eagle.app.flash.bin
 
+-include $(DEPS)
+
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
 
 $(OBJDIR)/libuser.a: $(OBJ)
 	$(AR) ru $@ $^
