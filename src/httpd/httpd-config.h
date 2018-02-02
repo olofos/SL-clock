@@ -1,0 +1,7 @@
+#ifndef HTTPD_CONFIG_H_
+#define HTTPD_CONFIG_H_
+
+#define HTTPD_MAX_CONNECTIONS 4
+#define HTTPD_STACKSIZE 2048
+
+#endif

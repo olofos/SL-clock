@@ -1,5 +1,6 @@
 SOURCES := brzo_i2c.c fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c \
-    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c
+    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c \
+    httpd/auth.c  httpd/base64.c  httpd/httpd.c  httpd/httpd-freertos.c  httpd/sha1.c httpd/cgiwifi.c
 
 TARGET=user
 
@@ -18,7 +19,7 @@ OBJCOPY = xtensa-lx106-elf-objcopy
 OBJDUMP = xtensa-lx106-elf-objdump
 
 
-CFLAGS = -DPROGMEM= -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
+CFLAGS = -DPROGMEM= -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
          -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
 
 LDFILE = ld/eagle.app.v6.ld
@@ -71,7 +72,7 @@ flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
 
 spiffs-image:
-	../mkspiffs/mkspiffs -b 4096 -p 128 -c data/ bin/spiffs.bin
+	../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ bin/spiffs.bin
 
 spiffs-flash: spiffs-image
 	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash 0x100000 bin/spiffs.bin
