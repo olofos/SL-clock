@@ -214,6 +214,8 @@ int http_open(struct HTTPRequest *request)
         return -1;
     }
 
+    LOG("Connected");
+
     freeaddrinfo(res);
 
     request->poke = -1;
