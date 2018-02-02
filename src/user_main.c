@@ -277,7 +277,7 @@ void display_task(void *pvParameters)
 
         for(int i = 0; i < 2; i++)
         {
-            draw_row(20 + states[i].x_shift, states[i].y_shift, journey_icons[i], &states[i].curr, 1);
+            draw_row(20 + states[i].x_shift, states[i].y_shift, journey_icons[i], &states[i].curr, 0);
         }
 
         fb_display();
