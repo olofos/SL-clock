@@ -39,6 +39,7 @@ enum log_system
     LOG_SYS_SSD1306,
     LOG_SYS_WIFI,
     LOG_SYS_CONFIG,
+    LOG_SYS_DISPLAY,
 
     LOG_NUM_SYSTEMS,
 

@@ -29,6 +29,7 @@ static const char* log_system_names[LOG_NUM_SYSTEMS] = {
     [LOG_SYS_SSD1306] = "SSD1306",
     [LOG_SYS_WIFI] = "WIFI",
     [LOG_SYS_CONFIG] = "CONF",
+    [LOG_SYS_DISPLAY] = "DISP",
 };
 
 typedef void (*log_func_t)(enum log_level, enum log_system, const char *);

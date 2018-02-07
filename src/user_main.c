@@ -9,21 +9,17 @@
 #include <fcntl.h>
 
 #include "uart.h"
-#include "brzo_i2c.h"
 #include "http-client.h"
 #include "timezone-db.h"
 #include "journey.h"
 #include "journey-task.h"
 #include "sntp.h"
 #include "keys.h"
-#include "ssd1306.h"
-#include "fonts.h"
-#include "framebuffer.h"
 #include "status.h"
 #include "wifi-task.h"
 #include "config.h"
+#include "display.h"
 #include "http-client.h"
-
 #include "httpd/httpd.h"
 #include "httpd/cgiwifi.h"
 
@@ -132,158 +128,6 @@ void journey_test_task(void *pvParameters)
     }
 }
 
-#define STATE_DISPLAY 0
-#define STATE_SHIFT_OUT 1
-#define STATE_SHIFT_IN 2
-
-void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t *t, int blink)
-{
-    char str[6];
-
-    if(*t)
-    {
-        if(blink && (*t & 0x01))
-        {
-            strftime(str, sizeof(str), "%H %M", localtime(t));
-        } else {
-            strftime(str, sizeof(str), "%H:%M", localtime(t));
-        }
-    } else {
-        sprintf(str, "--:--");
-    }
-
-    fb_draw_icon(x, y, icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-    fb_draw_string(x + 55, y, str, Monospaced_bold_16, FB_ALIGN_CENTER_V);
-}
-
-
-struct journey_display_state
-{
-    time_t curr;
-    time_t next;
-    int16_t x_shift;
-    int16_t y_shift;
-    uint8_t state;
-
-    portTickType anim_start;
-};
-
-void update_state(struct journey_display_state *state, const time_t *t)
-{
-    switch(state->state)
-    {
-    case STATE_DISPLAY:
-        if(*t != state->curr)
-        {
-            state->state = STATE_SHIFT_OUT;
-            state->anim_start = xTaskGetTickCount();
-            state->next = *t;
-        }
-        break;
-
-    case STATE_SHIFT_OUT:
-
-        state->x_shift = (xTaskGetTickCount() - state->anim_start);
-
-        if(state->x_shift >= 128)
-        {
-            state->x_shift = 128;
-            state->state = STATE_SHIFT_IN;
-            state->anim_start = xTaskGetTickCount();
-            state->curr = state->next;
-        }
-        break;
-
-    case STATE_SHIFT_IN:
-        state->x_shift = 128 - (xTaskGetTickCount() - state->anim_start);
-
-        if(state->x_shift <= 0)
-        {
-            state->x_shift = 0;
-            state->state = STATE_DISPLAY;
-        }
-    }
-}
-
-void display_task(void *pvParameters)
-{
-    brzo_i2c_setup(200);
-
-    while(ssd1306_init() !=0)
-    {
-        LOG("SSD1306 is not responding");
-        vTaskDelayMs(250);
-    }
-    fb_splash();
-
-    fb_clear();
-
-    struct icon *clock_icon = fb_load_icon_pbm("/icons/clock.pbm");
-    struct icon *noclock_icon = fb_load_icon_pbm("/icons/noclock.pbm");
-
-    struct icon *nowifi_icons[] = {
-        fb_load_icon_pbm("/icons/nowifi1.pbm"),
-        fb_load_icon_pbm("/icons/nowifi2.pbm"),
-        fb_load_icon_pbm("/icons/nowifi3.pbm"),
-        fb_load_icon_pbm("/icons/nowifi4.pbm"),
-    };
-
-    struct icon *journey_icons[2] = {
-        fb_load_icon_pbm("/icons/boat.pbm"),
-        fb_load_icon_pbm("/icons/bus.pbm"),
-    };
-
-    struct journey_display_state states[2] = {
-        { .x_shift = 0, .y_shift = 35, .state = STATE_DISPLAY },
-        { .x_shift = 0, .y_shift = 56, .state = STATE_DISPLAY },
-    };
-
-    for(int i = 0; i < 2; i++)
-    {
-        states[i].curr = journies[0].departures[journies[0].next_departure];
-        states[i].next = journies[0].departures[journies[0].next_departure];
-    }
-
-    for(;;)
-    {
-        for(int i = 0; i < 2; i++)
-        {
-            update_state(&states[i], &journies[i].departures[journies[i].next_departure]);
-        }
-
-        fb_clear();
-
-        if(!app_status.wifi_connected)
-        {
-            time_t now;
-
-            if(app_status.obtained_time && app_status.obtained_tz)
-            {
-                now = time(0);
-            } else {
-                now = 0;
-            }
-
-            uint32_t n = xTaskGetTickCount() / 33;
-
-            draw_row(20, 10, nowifi_icons[n & 0x03], &now, 1);
-        } else if(!(app_status.obtained_time && app_status.obtained_tz)) {
-            time_t now = 0;
-            draw_row(20, 10, noclock_icon, &now, 1);
-        } else {
-            time_t now = time(0);
-            draw_row(20, 10, clock_icon, &now, 1);
-        }
-
-        for(int i = 0; i < 2; i++)
-        {
-            draw_row(20 + states[i].x_shift, states[i].y_shift, journey_icons[i], &states[i].curr, 0);
-        }
-
-        fb_display();
-        vTaskDelayMs(25);
-    }
-}
 
 static const char *WWW_DIR = "/www";
 static const char *GZIP_EXT = ".gz";

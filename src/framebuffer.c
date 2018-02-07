@@ -11,6 +11,9 @@
 #include "fonts.h"
 #include "logo-paw-64x64.h"
 
+#include "log.h"
+#define LOG_SYS LOG_SYS_DISPLAY
+
 void fb_set_pixel(int16_t x,int16_t y,int8_t color)
 {
     if((0 <= x) && (x < FB_WIDTH) && (0 <= y) && (y < FB_HEIGHT))
@@ -149,7 +152,7 @@ static uint8_t reverse(uint8_t b) {
 
 struct icon *fb_load_icon_pbm(const char *filename)
 {
-    printf("Loading icon from file %s\n", filename);
+    LOG("Loading icon from file %s", filename);
 
     int fd = open(filename, O_RDONLY);
     if(!fd)
@@ -164,7 +167,7 @@ struct icon *fb_load_icon_pbm(const char *filename)
     if((buf[0] != 'P') || (buf[1] != '4') || (buf[2] != '\n'))
     {
         buf[3] = 0;
-        printf("Unexpected PBM magic '%s'\n", buf);
+        LOG("Unexpected PBM magic '%s'", buf);
         close(fd);
         return 0;
     }
@@ -178,7 +181,7 @@ struct icon *fb_load_icon_pbm(const char *filename)
     buf[i] = 0;
     if(buf[i-1] != ' ')
     {
-        printf("Could not find width of PBM (got '%s')\n", buf);
+        LOG("Could not find width of PBM (got '%s')", buf);
         close(fd);
         return 0;
     }
@@ -194,7 +197,7 @@ struct icon *fb_load_icon_pbm(const char *filename)
     buf[i] = 0;
     if(buf[i-1] != '\n')
     {
-        printf("Could not find height of PBM (got '%s')\n", buf);
+        LOG("Could not find height of PBM (got '%s')", buf);
         close(fd);
         return 0;
     }
