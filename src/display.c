@@ -60,7 +60,7 @@ static void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t
     }
 
     fb_draw_icon(x, y, icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-    fb_draw_string(x + 55, y, str, Monospaced_bold_16, FB_ALIGN_CENTER_V);
+    fb_draw_string(x + 55, y, str, 0, Monospaced_bold_16, FB_ALIGN_CENTER_V);
 }
 
 static void update_state(struct journey_display_state *state, const time_t *next)
@@ -170,6 +170,8 @@ void display_task(void *pvParameters)
         }
 
         fb_clear();
+
+        fb_set_pen(FB_NORMAL);
 
         draw_clock_row(x_base);
 
