@@ -49,6 +49,9 @@ void fb_clear(void)
 
 void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
 {
+    if(-h >= y || y > FB_HEIGHT) {
+        return;
+    }
     uint8_t raster_height = 1 + ((h - 1) / 8);
     int8_t offset = y & 0x07;
 
@@ -70,7 +73,7 @@ void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, 
             {
                 fb_set_pixel_row(data_pos, c << offset);
             }
-            if((0 <= data_pos + FB_WIDTH) && (data_pos + FB_WIDTH))
+            if((0 <= data_pos + FB_WIDTH) && (data_pos + FB_WIDTH < FB_SIZE))
             {
                 fb_set_pixel_row(data_pos + FB_WIDTH, c >> (8 - offset));
             }
@@ -80,6 +83,10 @@ void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, 
 
 void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignment alignment)
 {
+    if(!icon) {
+        return;
+    }
+
     if(alignment & FB_ALIGN_CENTER_H)
     {
         x -= icon->width/2;
@@ -99,6 +106,10 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
     const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
     const uint16_t jump_table_size = char_num * FONT_JUMPTABLE_BYTES;
+
+    if(!text) {
+        return;
+    }
 
     if(!len) {
         len = strlen(text);
