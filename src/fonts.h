@@ -17,10 +17,10 @@
 #define FONT_FIRST_CHAR_POS 2
 #define FONT_CHAR_NUM_POS 3
 
-extern const uint8_t ArialMT_Plain_10[] PROGMEM;
-extern const uint8_t ArialMT_Plain_16[] PROGMEM;
-extern const uint8_t ArialMT_Plain_24[] PROGMEM;
-extern const uint8_t Monospaced_bold_16[] PROGMEM;
-extern const uint8_t Monospaced_plain_28[] PROGMEM;
+extern const uint8_t ArialMT_Plain_10[];
+extern const uint8_t ArialMT_Plain_16[];
+extern const uint8_t ArialMT_Plain_24[];
+extern const uint8_t Monospaced_bold_16[];
+extern const uint8_t Monospaced_plain_28[];
 
 #endif

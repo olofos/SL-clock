@@ -1,6 +1,6 @@
 #include "fonts.h"
 
-const uint8_t ArialMT_Plain_10[] PROGMEM = {
+const uint8_t ArialMT_Plain_10[] = {
   0x0A, // Width: 10
   0x0D, // Height: 13
   0x20, // First Char: 32
@@ -424,7 +424,7 @@ const uint8_t ArialMT_Plain_10[] PROGMEM = {
   0x20,0x00,0xC8,0x09,0x00,0x06,0xC8,0x01,0x20  // 255
 };
 
-const uint8_t ArialMT_Plain_16[] PROGMEM = {
+const uint8_t ArialMT_Plain_16[] = {
   0x10, // Width: 16
   0x13, // Height: 19
   0x20, // First Char: 32
@@ -847,7 +847,7 @@ const uint8_t ArialMT_Plain_16[] PROGMEM = {
   0x00,0x00,0x00,0xF8,0xFF,0x03,0x80,0x20,0x00,0x40,0x40,0x00,0x40,0x40,0x00,0x40,0x40,0x00,0x80,0x20,0x00,0x00,0x1F, // 254
   0xC0,0x01,0x00,0x00,0x06,0x02,0x10,0x38,0x02,0x00,0xE0,0x01,0x10,0x38,0x00,0x00,0x07,0x00,0xC0  // 255
 };
-const uint8_t ArialMT_Plain_24[] PROGMEM = {
+const uint8_t ArialMT_Plain_24[] = {
   0x18, // Width: 24
   0x1C, // Height: 28
   0x20, // First Char: 32
@@ -1273,7 +1273,7 @@ const uint8_t ArialMT_Plain_24[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const uint8_t Monospaced_bold_16[] PROGMEM = {
+const uint8_t Monospaced_bold_16[] = {
 	0x0A, // Width: 10
 	0x13, // Height: 19
 	0x20, // First Char: 32
@@ -1733,7 +1733,7 @@ const uint8_t Monospaced_bold_16[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Dialog_plain_28[] PROGMEM = {
+const char Dialog_plain_28[] = {
 	0x1C, // Width: 28
 	0x21, // Height: 33
 	0x20, // First Char: 32
@@ -2193,7 +2193,7 @@ const char Dialog_plain_28[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const uint8_t Monospaced_plain_28[] PROGMEM = {
+const uint8_t Monospaced_plain_28[] = {
 	0x11, // Width: 17
 	0x21, // Height: 33
 	0x20, // First Char: 32

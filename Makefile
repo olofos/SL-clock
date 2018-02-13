@@ -28,7 +28,7 @@ NM = xtensa-lx106-elf-nm
 OBJCOPY = xtensa-lx106-elf-objcopy
 OBJDUMP = xtensa-lx106-elf-objdump
 
-CFLAGS = -DPROGMEM= -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
+CFLAGS = -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
          -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
 
 LDFILE = ld/eagle.app.v6.ld

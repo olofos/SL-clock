@@ -10,7 +10,7 @@
 #include "log.h"
 #define LOG_SYS LOG_SYS_SSD1306
 
-const uint8_t ssd1306_init_seq[] PROGMEM = {
+const uint8_t ssd1306_init_seq[] = {
     // Tell the SSD1306 that a command stream is incoming
     OLED_CONTROL_BYTE_CMD_STREAM,
 
