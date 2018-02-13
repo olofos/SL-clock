@@ -100,7 +100,8 @@ test: build_dirs $(TST_RESULTS)
 	@echo `grep -s IGNORE $(RESULTDIR)/*.txt`
 	@echo "-----------------------\nFAILURES:\n-----------------------"
 	@echo `grep -s FAIL $(RESULTDIR)/*.txt`
-	@echo "\nDONE"
+	@echo "\nDONE\n"
+	@! grep -s FAIL $(RESULTDIR)/*.txt 2>&1 1>/dev/null
 
 build_dirs:
 	@mkdir -p $(BUILD_DIRS)
