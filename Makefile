@@ -7,17 +7,26 @@ TARGET=user
 SRCDIR := src
 OBJDIR := obj
 DEPDIR := .deps
+TSTDIR := test
+TSTOBJDIR := test/obj
+TSTBINDIR := test/bin
+RESULTDIR := test/results
+UNITYDIR := unity
+
+BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR)
 
 SRC := $(SOURCES:%.c=$(SRCDIR)/%.c)
 OBJ := $(SOURCES:%.c=$(OBJDIR)/%.o)
 DEPS := $(SOURCES:%.c=$(DEPDIR)/%.d)
+
+SOURCES_TST = $(wildcard $(TSTDIR)/*.c)
+
 
 AR = xtensa-lx106-elf-ar
 CC = xtensa-lx106-elf-gcc
 NM = xtensa-lx106-elf-nm
 OBJCOPY = xtensa-lx106-elf-objcopy
 OBJDUMP = xtensa-lx106-elf-objdump
-
 
 CFLAGS = -DPROGMEM= -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
          -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
@@ -40,9 +49,14 @@ INCLUDES += -I$(SDK_PATH)/include/ssl
 INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
-.PHONY: all bin flash clean erase spiffs-flash spiffs-image
+TST_CC = gcc
+TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR)
 
-all: eagle.app.flash.bin
+TST_RESULTS = $(patsubst $(TSTDIR)/test_%.c,$(RESULTDIR)/test_%.txt,$(SOURCES_TST))
+
+.PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs
+
+all: build_dirs eagle.app.flash.bin
 
 -include $(DEPS)
 
@@ -80,5 +94,45 @@ spiffs-flash: spiffs-image
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
 
+
+test: build_dirs $(TST_RESULTS)
+	@echo "-----------------------\nIGNORES:\n-----------------------"
+	@echo `grep -s IGNORE $(RESULTDIR)/*.txt`
+	@echo "-----------------------\nFAILURES:\n-----------------------"
+	@echo `grep -s FAIL $(RESULTDIR)/*.txt`
+	@echo "\nDONE"
+
+build_dirs:
+	@mkdir -p $(BUILD_DIRS)
+
+
+$(RESULTDIR)/%.txt: $(TSTBINDIR)/%
+	@echo Running $<
+	@echo
+	@./$< > $@ 2>&1 || true
+
+
+$(TSTOBJDIR)/%.o : $(TSTDIR)/%.c
+	@echo CC $@
+	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+
+$(TSTOBJDIR)/%.o : $(SRCDIR)/%.c
+	@echo CC $@
+	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+
+$(TSTOBJDIR)/%.o : $(UNITYDIR)/%.c
+	@echo CC $@
+	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+
+$(TSTBINDIR)/test_%: $(TSTOBJDIR)/test_%.o $(TSTOBJDIR)/%.o $(TSTOBJDIR)/unity.o
+	@echo CC $@
+	@$(TST_CC) -o $@ $^
+
 clean:
-	rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
+	-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
+
+.PRECIOUS: $(TSTBINDIR)/test_%
+.PRECIOUS: $(DEPDIR)/%.d
+.PRECIOUS: $(OBJDIR)/%.o
+.PRECIOUS: $(RESULTDIR)/%.txt
+.PRECIOUS: $(TSTOBJDIR)/%.o
