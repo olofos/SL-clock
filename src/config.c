@@ -61,23 +61,32 @@ static save_func save_funcs[] = {
 
 static void load_wifi(json_stream *json)
 {
-    json_expect(json, JSON_OBJECT);
+    char ssid[WIFI_SSID_LEN];
+    char pass[WIFI_PASS_LEN];
 
-    int n;
-    while((n = json_find_names(json, (const char*[]) { "SSID", "PASS" }, 2)) >= 0)
-    {
-        json_expect(json, JSON_STRING);
-        switch(n)
-        {
-        case 0:
-            strncpy(wifi_ssid, json_get_string(json, 0), WIFI_SSID_LEN);
-            printf("SSID: %s\n", json_get_string(json, 0));
-            break;
-        case 1:
-            strncpy(wifi_pass, json_get_string(json, 0), WIFI_PASS_LEN);
-            printf("PASS: %s\n", json_get_string(json, 0));
-            break;
+    json_expect(json, JSON_ARRAY);
+
+    while(json_next(json) == JSON_OBJECT) {
+
+        ssid[0] = 0;
+        pass[0] = 0;
+
+        int n;
+        while((n = json_find_names(json, (const char*[]) { "SSID", "PASS" }, 2)) >= 0) {
+            json_expect(json, JSON_STRING);
+            switch(n) {
+            case 0:
+                nul_strncpy(ssid, json_get_string(json, 0), WIFI_SSID_LEN);
+                printf("SSID: %s\n", json_get_string(json, 0));
+                break;
+            case 1:
+                nul_strncpy(pass, json_get_string(json, 0), WIFI_PASS_LEN);
+                printf("PASS: %s\n", json_get_string(json, 0));
+                break;
+            }
         }
+
+        wifi_ap_add_back(ssid, pass);
     }
 }
 
@@ -154,8 +163,21 @@ static void load_timezone(json_stream *json)
 
 static void save_wifi(FILE *f)
 {
-    fprintf(f, "{\"SSID\":\"%s\",\"PASS\":\"%s\"}", wifi_ssid, wifi_pass);
+    struct wifi_ap *ap = wifi_first_ap;
+
+    fprintf(f, "[");
+
+    while(ap) {
+        fprintf(f, "{\"SSID\":\"%s\",\"PASS\":\"%s\"}", ap->ssid, ap->password);
+        if(ap->next) {
+            fprintf(f, ", ");
+        }
+        ap = ap->next;
+    }
+
+    fprintf(f, "]");
 }
+
 
 static void save_journies(FILE *f)
 {

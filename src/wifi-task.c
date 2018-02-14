@@ -3,7 +3,6 @@
 
 #include "wifi-task.h"
 #include "status.h"
-#include "keys.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_WIFI
@@ -41,17 +40,18 @@ void wifi_task(void *pvParameters)
 
     wifi_set_event_handler_cb(wifi_handle_event_cb);
 
-    struct station_config config;
-
-    memset(&config, 0, sizeof(config));
-
-    strncpy((char *)&config.ssid, wifi_ssid, WIFI_SSID_LEN);
-    strncpy((char *)&config.password, wifi_pass, WIFI_PASS_LEN);
-
-
     wifi_set_opmode(STATION_MODE);
-    wifi_station_set_config(&config);
 
+    struct station_config station_config;
+
+    memset(&station_config, 0, sizeof(station_config));
+
+    if(wifi_first_ap) {
+        strncpy((char *)&station_config.ssid, wifi_first_ap->ssid, WIFI_SSID_LEN);
+        strncpy((char *)&station_config.password, wifi_first_ap->password, WIFI_PASS_LEN);
+    }
+
+    wifi_station_set_config(&station_config);
     wifi_station_connect();
 
     for(;;)

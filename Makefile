@@ -1,5 +1,5 @@
 SOURCES := brzo_i2c.c fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c display.c \
-    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c \
+    json.c json-util.c log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c wifi-logic.c \
     httpd/auth.c  httpd/base64.c  httpd/httpd.c  httpd/httpd-freertos.c  httpd/sha1.c httpd/cgiwifi.c
 
 TARGET=user
@@ -50,7 +50,7 @@ INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
 TST_CC = gcc
-TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR)
+TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR) -g
 
 TST_RESULTS = $(patsubst $(TSTDIR)/test_%.c,$(RESULTDIR)/test_%.txt,$(SOURCES_TST))
 
@@ -110,7 +110,7 @@ build_dirs:
 $(RESULTDIR)/%.txt: $(TSTBINDIR)/%
 	@echo Running $<
 	@echo
-	@./$< > $@ 2>&1 || true
+	@./$< > $@ || true
 
 
 $(TSTOBJDIR)/%.o : $(TSTDIR)/%.c
