@@ -3,3 +3,5 @@ obj/
 bin/
 src/keys.h
 .deps/
+test/results
+data/config.json
