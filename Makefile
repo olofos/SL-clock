@@ -96,11 +96,18 @@ erase:
 
 
 test: build_dirs $(TST_RESULTS)
-	@echo "-----------------------\nIGNORES:\n-----------------------"
+	@echo "-----------------------"
+	@echo "IGNORE:" `grep -o IGNORE $(RESULTDIR)/*.txt|wc -l`
+	@echo "-----------------------"
 	@echo `grep -s IGNORE $(RESULTDIR)/*.txt`
-	@echo "-----------------------\nFAILURES:\n-----------------------"
+	@echo "\n-----------------------"
+	@echo "FAIL:" `grep -o FAIL $(RESULTDIR)/*.txt|wc -l`
+	@echo "-----------------------"
 	@echo `grep -s FAIL $(RESULTDIR)/*.txt`
-	@echo "\nDONE\n"
+	@echo "\n-----------------------"
+	@echo "PASS:" `grep -o PASS $(RESULTDIR)/*.txt|wc -l`
+	@echo "-----------------------"
+	@echo
 	@! grep -s FAIL $(RESULTDIR)/*.txt 2>&1 1>/dev/null
 
 build_dirs:
