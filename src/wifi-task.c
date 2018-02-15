@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "wifi-task.h"
-#include "status.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_WIFI
@@ -18,15 +17,11 @@ static void wifi_handle_event_cb(System_Event_t *evt)
     uint8_t wifi_event;
     switch (evt->event_id) {
     case EVENT_STAMODE_GOT_IP:
-        app_status.wifi_connected = 1;
-
         wifi_event = WIFI_EVENT_AP_CONNECTED;
         xQueueSend(wifi_event_queue, &wifi_event, 0);
         break;
 
     case EVENT_STAMODE_DISCONNECTED:
-        app_status.wifi_connected = 0;
-
         switch(evt->event_info.disconnected.reason) {
         case REASON_AUTH_FAIL:
         case REASON_AUTH_EXPIRE:

@@ -4,7 +4,7 @@
 
 #include "unity.h"
 #include "wifi-task.h"
-
+#include "status.h"
 #include "log.h"
 
 //////// Constants used in tests ///////////////////////////////////////////////
@@ -17,6 +17,8 @@ extern struct wifi_ap *wifi_current_ap;
 extern int wifi_ap_retries_left;
 
 struct wifi_ap *wifi_first_ap = 0;
+
+struct app_status app_status;
 
 void wifi_ap_connect(const struct wifi_ap *ap)
 {
