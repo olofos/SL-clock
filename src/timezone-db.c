@@ -5,6 +5,7 @@
 
 #include "json.h"
 #include "json-util.h"
+#include "json-http.h"
 #include "keys.h"
 #include "timezone-db.h"
 #include "status.h"

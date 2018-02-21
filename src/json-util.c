@@ -142,10 +142,3 @@ bool json_find_name(json_stream *json, const char *name)
     const char* names[] = {name};
     return json_find_names(json, names, 1) >= 0;
 }
-
-#ifndef JSON_UTIL_NO_HTTP
-void json_open_http(json_stream *json, struct HTTPRequest *request)
-{
-    json_open_user(json, (json_user_io) &http_getc, (json_user_io) &http_peek, request);
-}
-#endif

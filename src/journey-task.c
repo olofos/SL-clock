@@ -4,6 +4,7 @@
 #include "http-client.h"
 #include "json.h"
 #include "json-util.h"
+#include "json-http.h"
 #include "journey.h"
 #include "journey-task.h"
 #include "keys.h"
