@@ -70,7 +70,7 @@ struct transition
     enum wifi_event event;
 };
 
-static void test__verify_transition_table(void)
+static void test__wifi_handle_event__verify_transition_table(void)
 {
     struct wifi_ap next_ap =    { .ssid = "NEXT",    .password = "PASS", .next = 0 };
     struct wifi_ap current_ap = { .ssid = "CURRENT", .password = "PASS", .next = &next_ap };
@@ -212,13 +212,35 @@ static void test__verify_transition_table(void)
 }
 
 
+void test__wifi_handle_event__error_event_should_lead_to_error_state(void)
+{
+    enum wifi_state states[] = {
+        WIFI_STATE_NOT_CONNECTED,
+        WIFI_STATE_AP_CONNECTED,
+        WIFI_STATE_AP_CONNECTING,
+        WIFI_STATE_NO_AP_FOUND,
+        WIFI_STATE_ERROR,
+    };
+
+    for(int i = 0; i < sizeof(states)/sizeof(states[0]); i++) {
+        wifi_state = states[i];
+        wifi_current_ap = 0;
+        wifi_ap_retries_left = 0;
+
+        wifi_handle_event(WIFI_EVENT_ERROR);
+
+        TEST_ASSERT_EQUAL_INT(WIFI_STATE_ERROR, wifi_state);
+    }
+}
+
+
 //////// Main //////////////////////////////////////////////////////////////////
 
 int main(void)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test__verify_transition_table);
-
+    RUN_TEST(test__wifi_handle_event__verify_transition_table);
+    RUN_TEST(test__wifi_handle_event__error_event_should_lead_to_error_state);
     return UNITY_END();
 }
