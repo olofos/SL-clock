@@ -5,10 +5,11 @@
 
 #define LOG_SYS LOG_SYS_WIFI
 
-
 enum wifi_state wifi_state;
 struct wifi_ap *wifi_current_ap;
 int wifi_ap_retries_left;
+int wifi_softap_num_connected_stations = 0;
+int wifi_softap_enabled = 0;
 
 void wifi_state_machine_init(void)
 {
@@ -21,6 +22,26 @@ void wifi_state_machine_init(void)
 
 void wifi_handle_event(enum wifi_event event)
 {
+
+    if(event == WIFI_EVENT_STA_CONNECTED) {
+        LOG("A station connected to the soft AP");
+
+        wifi_softap_num_connected_stations++;
+        return;
+    } else if(event == WIFI_EVENT_STA_DISCONNECTED) {
+        LOG("A station disconnected from the soft AP");
+
+        if(wifi_softap_num_connected_stations > 0) {
+            wifi_softap_num_connected_stations--;
+        } else {
+            LOG("There were no connected stations!");
+        }
+        return;
+    } else if(event == WIFI_EVENT_ERROR) {
+        wifi_state = WIFI_STATE_ERROR;
+        return;
+    }
+
     switch(wifi_state) {
     case WIFI_STATE_NOT_CONNECTED:
         if(event == WIFI_EVENT_NO_EVENT) {
@@ -41,6 +62,12 @@ void wifi_handle_event(enum wifi_event event)
     case WIFI_STATE_AP_CONNECTED:
         switch(event) {
         case WIFI_EVENT_NO_EVENT:
+            if(wifi_softap_enabled && (wifi_softap_num_connected_stations == 0)) {
+                LOG("WIFI_STATE_AP_CONNECTED: disabling soft AP");
+
+                wifi_softap_disable();
+                wifi_softap_enabled = 0;
+            }
             break;
 
         case WIFI_EVENT_AP_CONNECTION_LOST:
@@ -101,11 +128,16 @@ void wifi_handle_event(enum wifi_event event)
         break;
 
 
-
     case WIFI_STATE_NO_AP_FOUND:
         if(event == WIFI_EVENT_NO_EVENT) {
-            LOG("No ap found -- should probably start our own AP");
-            LOG("For now we just start over");
+            if(!wifi_softap_enabled) {
+                LOG("WIFI_STATE_NO_AP_FOUND: enabling soft AP");
+
+                wifi_softap_enable();
+                wifi_softap_enabled = 1;
+            }
+            LOG("WIFI_STATE_NO_AP_FOUND: trying to connect to AP");
+
 
             wifi_current_ap = wifi_first_ap;
             wifi_ap_retries_left = WIFI_AP_NUMBER_OF_RETRIES;

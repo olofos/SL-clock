@@ -24,6 +24,14 @@ void wifi_ap_connect(const struct wifi_ap *ap)
 {
 }
 
+void wifi_softap_enable(void)
+{
+}
+
+void wifi_softap_disable(void)
+{
+}
+
 void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 {
     va_list va;

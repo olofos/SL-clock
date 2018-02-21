@@ -15,6 +15,11 @@ enum wifi_event
     WIFI_EVENT_AP_WRONG_PASSWORD,
     WIFI_EVENT_AP_NOT_FOUND,
     WIFI_EVENT_AP_CONNECTION_LOST,
+
+    WIFI_EVENT_STA_CONNECTED,
+    WIFI_EVENT_STA_DISCONNECTED,
+
+    WIFI_EVENT_ERROR,
 };
 
 enum wifi_state
@@ -72,6 +77,9 @@ void wifi_ap_connect(const struct wifi_ap *ap);
 
 void wifi_state_machine_init(void);
 void wifi_handle_event(enum wifi_event event);
+
+void wifi_softap_enable(void);
+void wifi_softap_disable(void);
 
 
 #endif
