@@ -100,7 +100,7 @@ static void test__verify_transition_table(void)
         {
             .current_state = { .state = WIFI_STATE_NOT_CONNECTED, .current_ap = 0,      .retries_left = 2 },
             .next_state =    { .state = WIFI_STATE_ERROR,         .current_ap = 0,      .retries_left = 2 },
-            .event = WIFI_EVENT_AP_WRONG_PASSWORD
+            .event = WIFI_EVENT_AP_CONNECTION_FAILED
         },
 
         {
@@ -118,7 +118,7 @@ static void test__verify_transition_table(void)
         {
             .current_state = { .state = WIFI_STATE_NOT_CONNECTED, .current_ap = &current_ap,      .retries_left = 2 },
             .next_state =    { .state = WIFI_STATE_ERROR,         .current_ap = &current_ap,      .retries_left = 2 },
-            .event = WIFI_EVENT_AP_WRONG_PASSWORD
+            .event = WIFI_EVENT_AP_CONNECTION_FAILED
         },
 
         {
@@ -145,13 +145,13 @@ static void test__verify_transition_table(void)
         {
             .current_state = { .state = WIFI_STATE_AP_CONNECTING, .current_ap = &current_ap, .retries_left = 2 },
             .next_state =    { .state = WIFI_STATE_NOT_CONNECTED, .current_ap = &current_ap, .retries_left = 1 },
-            .event = WIFI_EVENT_AP_WRONG_PASSWORD
+            .event = WIFI_EVENT_AP_CONNECTION_FAILED
         },
 
         {
             .current_state = { .state = WIFI_STATE_AP_CONNECTING, .current_ap = &current_ap, .retries_left = 1 },
             .next_state =    { .state = WIFI_STATE_NOT_CONNECTED, .current_ap = &next_ap   , .retries_left = WIFI_AP_NUMBER_OF_RETRIES },
-            .event = WIFI_EVENT_AP_WRONG_PASSWORD
+            .event = WIFI_EVENT_AP_CONNECTION_FAILED
         },
 
         {

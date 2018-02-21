@@ -97,7 +97,7 @@ void wifi_handle_event(enum wifi_event event)
             wifi_state = WIFI_STATE_AP_CONNECTED;
             break;
 
-        case WIFI_EVENT_AP_WRONG_PASSWORD:
+        case WIFI_EVENT_AP_CONNECTION_FAILED:
             if(--wifi_ap_retries_left) {
                 LOG("WIFI_STATE_AP_CONNECTING: wrong password, %d retries left", wifi_ap_retries_left);
             } else {

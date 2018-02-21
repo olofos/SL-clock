@@ -26,10 +26,9 @@ static void wifi_handle_event_cb(System_Event_t *evt)
         switch(evt->event_info.disconnected.reason) {
         case REASON_AUTH_FAIL:
         case REASON_AUTH_EXPIRE:
-            // Maybe the event should be called "CONNECTION_FAILURE" or something like that?
         case REASON_HANDSHAKE_TIMEOUT:
         case REASON_ASSOC_EXPIRE:
-            wifi_event = WIFI_EVENT_AP_WRONG_PASSWORD;
+            wifi_event = WIFI_EVENT_AP_CONNECTION_FAILED;
             break;
 
         case REASON_BEACON_TIMEOUT:
