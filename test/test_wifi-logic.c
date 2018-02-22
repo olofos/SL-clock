@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "unity.h"
+#include "display-message.h"
 #include "wifi-task.h"
 #include "status.h"
 #include "log.h"
@@ -29,6 +30,10 @@ void wifi_softap_enable(void)
 }
 
 void wifi_softap_disable(void)
+{
+}
+
+void display_post_message(enum display_message message)
 {
 }
 

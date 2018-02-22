@@ -1,6 +1,6 @@
 #include "wifi-task.h"
 #include "status.h"
-
+#include "display-message.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_WIFI
@@ -93,6 +93,10 @@ void wifi_handle_event(enum wifi_event event)
         case WIFI_EVENT_AP_CONNECTED:
             app_status.wifi_connected = 1;
 
+            if(wifi_softap_enabled) {
+                display_post_message(DISPLAY_MESSAGE_NONE);
+            }
+
             LOG("WIFI_STATE_AP_CONNECTING: connected");
             wifi_state = WIFI_STATE_AP_CONNECTED;
             break;
@@ -133,10 +137,12 @@ void wifi_handle_event(enum wifi_event event)
             if(!wifi_softap_enabled) {
                 LOG("WIFI_STATE_NO_AP_FOUND: enabling soft AP");
 
+                display_post_message(DISPLAY_MESSAGE_NO_WIFI);
+
                 wifi_softap_enable();
                 wifi_softap_enabled = 1;
             }
-            LOG("WIFI_STATE_NO_AP_FOUND: trying to connect to AP");
+            LOG("WIFI_STATE_NO_AP_FOUND: retrying");
 
 
             wifi_current_ap = wifi_first_ap;
