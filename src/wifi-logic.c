@@ -5,11 +5,14 @@
 
 #define LOG_SYS LOG_SYS_WIFI
 
+#define WIFI_SOFTAP_TIMEOUT 5
+
 enum wifi_state wifi_state;
 struct wifi_ap *wifi_current_ap;
 int wifi_ap_retries_left;
 int wifi_softap_num_connected_stations = 0;
 int wifi_softap_enabled = 0;
+int wifi_softap_timeout;
 
 void wifi_state_machine_init(void)
 {
@@ -62,11 +65,19 @@ void wifi_handle_event(enum wifi_event event)
     case WIFI_STATE_AP_CONNECTED:
         switch(event) {
         case WIFI_EVENT_NO_EVENT:
-            if(wifi_softap_enabled && (wifi_softap_num_connected_stations == 0)) {
-                LOG("WIFI_STATE_AP_CONNECTED: disabling soft AP");
+            if(wifi_softap_enabled) {
+                if(wifi_softap_num_connected_stations > 0) {
+                    wifi_softap_timeout = WIFI_SOFTAP_TIMEOUT;
+                } else {
+                    if(wifi_softap_timeout > 0) {
+                        wifi_softap_timeout--;
+                    } else {
+                        LOG("WIFI_STATE_AP_CONNECTED: disabling soft AP");
 
-                wifi_softap_disable();
-                wifi_softap_enabled = 0;
+                        wifi_softap_disable();
+                        wifi_softap_enabled = 0;
+                    }
+                }
             }
             break;
 
