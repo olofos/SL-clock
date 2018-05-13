@@ -1,6 +1,5 @@
 SOURCES := brzo_i2c.c fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
-    json.c json-util.c json-http.c	 log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
-    httpd/auth.c  httpd/base64.c  httpd/httpd.c  httpd/httpd-freertos.c  httpd/sha1.c httpd/cgiwifi.c
+    json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c
 
 TARGET=user
 
