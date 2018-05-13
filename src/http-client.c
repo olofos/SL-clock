@@ -220,7 +220,9 @@ int http_open(struct HTTPRequest *request)
 
     request->poke = -1;
 
-    return request->fd = s;
+    request->fd = s;
+
+    return s;
 }
 
 int http_get(struct HTTPRequest *request)
