@@ -65,7 +65,9 @@ static void wifi_handle_event_cb(System_Event_t *evt)
     }
 
     if(wifi_event != WIFI_EVENT_NO_EVENT) {
-        xQueueSend(wifi_event_queue, &wifi_event, 0);
+        if(!xQueueSend(wifi_event_queue, &wifi_event, 0)) {
+            printf("Could not post event %d\n", wifi_event);
+        }
     }
 }
 
