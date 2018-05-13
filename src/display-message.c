@@ -1,4 +1,6 @@
 #include <esp_common.h>
+#include <stdio.h>
+
 #include "display-message.h"
 #include "display.h"
 #include "keys.h"
@@ -18,19 +20,29 @@ void display_post_message(enum display_message message)
 
 const char *display_get_message(enum display_message message)
 {
+    static char buf[64];
+    struct ip_info ipconfig;
+
     switch(message) {
     case DISPLAY_MESSAGE_NO_WIFI:
-        return "WIFI not found\nConnect to\n" WIFI_SOFTAP_SSID "\nto configure";
+        snprintf(buf, sizeof(buf), "WIFI not found\nConnect to\n" WIFI_SOFTAP_SSID "\nto configure");
+        break;
 
     case DISPLAY_MESSAGE_NO_JOURNIES:
-        return "No journies configured";
+        wifi_get_ip_info(STATION_IF, &ipconfig);
+        snprintf(buf, sizeof(buf), "No journies configured\nConnect to\n" IPSTR "\nto configure", IP2STR(&ipconfig.ip));
+        break;
 
     case DISPLAY_MESSAGE_NONE:
         LOG("Displaying emty message!");
-        return "No message!\nThis should not be displayed";
+        snprintf(buf, sizeof(buf), "No message!\nThis should not be displayed");
+        break;
 
     default:
         LOG("Displaying unkown message!");
-        return "Unkown message!\nThis should not be displayed";
+        snprintf(buf, sizeof(buf), "Unkown message!\nThis should not be displayed");
+        break;
     }
+
+    return buf;
 }
