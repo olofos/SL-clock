@@ -26,7 +26,7 @@
 
 struct journey_display_state
 {
-    time_t curr;
+    time_t current;
     time_t next;
     int16_t x_shift;
     int16_t y_shift;
@@ -88,7 +88,7 @@ static void update_state(struct journey_display_state *state, const time_t *next
     switch(state->state)
     {
     case STATE_DISPLAY:
-        if(*next != state->curr)
+        if(*next != state->current)
         {
             state->state = STATE_SHIFT_OUT;
             state->anim_start = xTaskGetTickCount();
@@ -107,7 +107,7 @@ static void update_state(struct journey_display_state *state, const time_t *next
             state->x_shift = 128;
             state->state = STATE_SHIFT_IN;
             state->anim_start = xTaskGetTickCount();
-            state->curr = state->next;
+            state->current = state->next;
         }
         break;
 
@@ -149,13 +149,13 @@ static void display_init()
     journey_icons[0] = fb_load_icon_pbm("/icons/boat.pbm");
     journey_icons[1] = fb_load_icon_pbm("/icons/bus.pbm");
 
-    journey_display_states[0] = (struct journey_display_state) { .x_shift = 0, .y_shift = 35, .state = STATE_DISPLAY, .curr = 0, .next = 0, .icon = journey_icons[0] };
-    journey_display_states[1] = (struct journey_display_state) { .x_shift = 0, .y_shift = 56, .state = STATE_DISPLAY, .curr = 0, .next = 0, .icon = journey_icons[1] };
+    journey_display_states[0] = (struct journey_display_state) { .x_shift = 0, .y_shift = 35, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = journey_icons[0] };
+    journey_display_states[1] = (struct journey_display_state) { .x_shift = 0, .y_shift = 56, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = journey_icons[1] };
 }
 
 static void draw_journey_row(int16_t x, struct journey_display_state *state)
 {
-    draw_row(x + state->x_shift, state->y_shift, state->icon, &state->curr, 0);
+    draw_row(x + state->x_shift, state->y_shift, state->icon, &state->current, 0);
 }
 
 static void draw_clock_row(int16_t x)
