@@ -81,12 +81,12 @@ void i2c_master_init(void)
 uint8_t i2c_start(uint8_t address, uint8_t rw)
 {
     i2c_sda_high();
-    i2c_scl_high(); // TODO: wait for SCL to be released
     i2c_delay();
+
+    i2c_scl_high(); // TODO: wait for SCL to be released
     i2c_delay();
 
     i2c_sda_low();
-    i2c_delay();
     i2c_delay();
 
     i2c_scl_low();
@@ -98,11 +98,9 @@ uint8_t i2c_start(uint8_t address, uint8_t rw)
 void i2c_stop(void)
 {
     i2c_sda_low();
-    i2c_scl_low();
     i2c_delay();
 
     i2c_scl_high(); // TODO: wait for SCL to be released
-    i2c_delay();
     i2c_delay();
 
     i2c_sda_high();
@@ -143,10 +141,10 @@ uint8_t i2c_write_byte(uint8_t data)
 
     i2c_scl_low();
 
+    i2c_delay();
+
     i2c_sda_output();
     i2c_sda_high();
-
-    i2c_delay();
 
     return ack;
 }
