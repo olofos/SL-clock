@@ -56,11 +56,12 @@ static inline void i2c_scl_output(void)
 }
 
 
-static inline void i2c_delay(void)
+// This is a *very* ugly hack. As long as gcc does not inline this function it somehow takes about just the right amount of time...
+// This should be replaced with an inline delay loop
+static void i2c_delay(void)
 {
-    os_delay_us(1);
+    asm ("nop\n nop");
 }
-
 
 void i2c_master_init(void)
 {
