@@ -106,12 +106,6 @@ void fb_display(void)
     i2c_write(framebuffer_full, sizeof(framebuffer_full));
     i2c_stop();
 #endif
-
-    //uint32_t t2 =  system_get_time();
-    asm volatile ("rsr %0, ccount" : "=r"(t2));
-
-    LOG("fb_display: %d", t2-t1);
-
 }
 
 int ssd1306_init(void)
