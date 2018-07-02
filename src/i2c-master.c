@@ -55,15 +55,18 @@ static inline void i2c_scl_output(void)
     GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1 << I2C_SCL_GPIO);
 }
 
+#define i2c_delay() \
+do {\
+    uint32_t temp1 = 3;\
+    asm volatile ("1:\n"\
+        "addi.n %0, %0, -1\n"\
+        "nop\n"\
+        "bnez %0, 1b\n"\
+        : "+r" (temp1));\
+} while(0)
 
-// This is a *very* ugly hack. As long as gcc does not inline this function it somehow takes about just the right amount of time...
-// This should be replaced with an inline delay loop
-static void i2c_delay(void)
-{
-    asm ("nop\n nop");
-}
 
-void i2c_master_init(void)
+void IRAM_ATTR i2c_master_init(void)
 {
     ETS_GPIO_INTR_DISABLE();
 
@@ -76,10 +79,9 @@ void i2c_master_init(void)
     GPIO_REG_WRITE(GPIO_ENABLE_ADDRESS, GPIO_REG_READ(GPIO_ENABLE_ADDRESS) | (1 << I2C_SCL_GPIO));
 
     ETS_GPIO_INTR_ENABLE();
-
 }
 
-uint8_t i2c_start(uint8_t address, uint8_t rw)
+uint8_t IRAM_ATTR i2c_start(uint8_t address, uint8_t rw)
 {
     i2c_sda_high();
     i2c_delay();
@@ -96,7 +98,7 @@ uint8_t i2c_start(uint8_t address, uint8_t rw)
     return i2c_write_byte((address << 1) | rw);
 }
 
-void i2c_stop(void)
+void IRAM_ATTR i2c_stop(void)
 {
     i2c_sda_low();
     i2c_delay();
@@ -108,7 +110,7 @@ void i2c_stop(void)
     i2c_delay();
 }
 
-uint8_t i2c_write_byte(uint8_t data)
+uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
 {
     for(int i = 0; i < 8; i++)
     {
@@ -150,7 +152,7 @@ uint8_t i2c_write_byte(uint8_t data)
     return ack;
 }
 
-uint16_t i2c_write(const uint8_t *data, uint16_t len)
+uint16_t IRAM_ATTR i2c_write(const uint8_t *data, uint16_t len)
 {
     uint8_t status = I2C_ACK;
     while((len > 0) && status) {
