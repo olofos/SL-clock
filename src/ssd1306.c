@@ -1,8 +1,15 @@
 // Based on https://github.com/SonalPinto/Arduino_SSD1306_OLED
 
 #include <stdint.h>
+#include <esp_common.h>
 
+#ifdef BRZO
 #include "brzo_i2c.h"
+#else
+#include "i2c-master.h"
+#endif
+
+
 #include "ssd1306.h"
 #include "ssd1306-cmd.h"
 #include "framebuffer.h"
@@ -76,6 +83,8 @@ void fb_display(void)
         OLED_CMD_SET_DISPLAY_OFFSET, 0,
     };
 
+#ifdef BRZO
+
     brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
     brzo_i2c_write(init, sizeof(init), 0);
     brzo_i2c_end_transaction();
@@ -86,13 +95,41 @@ void fb_display(void)
     brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
     brzo_i2c_write(framebuffer_full, sizeof(framebuffer_full), 0);
     brzo_i2c_end_transaction();
+#else
+    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
+    i2c_write(init, sizeof(init));
+    i2c_stop();
+
+    framebuffer_full[0] = OLED_CONTROL_BYTE_DATA_STREAM;
+
+    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
+    i2c_write(framebuffer_full, sizeof(framebuffer_full));
+    i2c_stop();
+#endif
+
+    //uint32_t t2 =  system_get_time();
+    asm volatile ("rsr %0, ccount" : "=r"(t2));
+
+    LOG("fb_display: %d", t2-t1);
+
 }
 
 int ssd1306_init(void)
 {
+#ifdef BRZO
     brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
     brzo_i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq), 0);
     int ret = brzo_i2c_end_transaction();
+#else
+    int ret = i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) != I2C_ACK;
+    if(!ret) {
+        LOG("ACK");
+        i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq));
+    } else {
+        LOG("No ACK");
+    }
+    i2c_stop();
+#endif
 
     return ret;
 }
