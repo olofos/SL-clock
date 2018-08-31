@@ -89,7 +89,7 @@ spiffs-image:
 	../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ bin/spiffs.bin
 
 spiffs-flash: spiffs-image
-	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash 0x100000 bin/spiffs.bin
+	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 bin/spiffs.bin
 
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
