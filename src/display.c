@@ -2,13 +2,9 @@
 #include <time.h>
 #include <esp_common.h>
 
-#ifdef BRZO
-#include "brzo_i2c.h"
-#else
 #include "i2c-master.h"
-#endif
 
-#include "ssd1306.h"
+#include "sh1106.h"
 #include "framebuffer.h"
 #include "fonts.h"
 #include "display.h"
@@ -134,15 +130,11 @@ static void display_init()
 {
     display_message_queue = xQueueCreate(4, 1);
 
-#ifdef BRZO
-    brzo_i2c_setup(200);
-#else
     i2c_master_init();
-#endif
 
-    while(ssd1306_init() !=0)
+    while(sh1106_init() !=0)
     {
-        LOG("SSD1306 is not responding");
+        LOG("SH1106 is not responding");
         vTaskDelayMs(250);
     }
     fb_splash();

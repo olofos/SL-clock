@@ -3,25 +3,20 @@
 #include <stdint.h>
 #include <esp_common.h>
 
-#ifdef BRZO
-#include "brzo_i2c.h"
-#else
 #include "i2c-master.h"
-#endif
 
-
-#include "ssd1306.h"
-#include "ssd1306-cmd.h"
+#include "sh1106.h"
+#include "sh1106-cmd.h"
 #include "framebuffer.h"
 
 #include "log.h"
-#define LOG_SYS LOG_SYS_SSD1306
+#define LOG_SYS LOG_SYS_SH1106
 
-const uint8_t ssd1306_init_seq[] = {
-    // Tell the SSD1306 that a command stream is incoming
+const uint8_t sh1106_init_seq[] = {
+    // Tell the SH1106 that a command stream is incoming
     OLED_CONTROL_BYTE_CMD_STREAM,
 
-    // Follow instructions on pg.64 of the dataSheet for software configuration of the SSD1306
+    // Follow instructions on pg.64 of the dataSheet for software configuration of the SH1106
     // Turn the Display OFF
     OLED_CMD_DISPLAY_OFF,
     // Set mux ration tp select max number of rows - 64
@@ -31,7 +26,7 @@ const uint8_t ssd1306_init_seq[] = {
     OLED_CMD_SET_DISPLAY_OFFSET,
     0x00,
     // Display start line to 0
-    OLED_CMD_SET_DISPLAY_START_LINE,
+    // OLED_CMD_SET_DISPLAY_START_LINE,
 
     // Mirror the x-axis. In case you set it up such that the pins are north.
     // 0xA0, // - in case pins are south - default
@@ -56,8 +51,8 @@ const uint8_t ssd1306_init_seq[] = {
     OLED_CMD_SET_DISPLAY_CLK_DIV,
     0x80,
     // Enable the charge pump
-    OLED_CMD_SET_CHARGE_PUMP,
-    0x14,
+    // OLED_CMD_SET_CHARGE_PUMP,
+    // 0x14,
     // Set precharge cycles to high cap type
     OLED_CMD_SET_PRECHARGE,
     0x22,
@@ -65,8 +60,8 @@ const uint8_t ssd1306_init_seq[] = {
     OLED_CMD_SET_VCOMH_DESELCT,
     0x30,
     // Horizonatal addressing mode - same as the KS108 GLCD
-    OLED_CMD_SET_MEMORY_ADDR_MODE,
-    0x00,
+    // OLED_CMD_SET_MEMORY_ADDR_MODE,
+    // 0x00,
     // Turn the Display ON
     OLED_CMD_DISPLAY_ON,
 };
@@ -76,54 +71,36 @@ uint8_t *framebuffer = &framebuffer_full[1];
 
 void fb_display(void)
 {
-    const uint8_t init[] = {
-        OLED_CONTROL_BYTE_CMD_STREAM,
-        OLED_CMD_SET_COLUMN_RANGE, 0, 0x7F,
-        OLED_CMD_SET_PAGE_RANGE, 0, 7,
-        OLED_CMD_SET_DISPLAY_OFFSET, 0,
-    };
+    for(int y = 0; y < 8; y++) {
+        const uint8_t init_page[] = {
+            OLED_CONTROL_BYTE_CMD_STREAM,
+            0x02,
+            0x10,
+            0xB0 | y,
+        };
 
-#ifdef BRZO
-
-    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
-    brzo_i2c_write(init, sizeof(init), 0);
-    brzo_i2c_end_transaction();
+        i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
+        i2c_write(init_page, sizeof(init_page));
+        i2c_stop();
 
 
-    framebuffer_full[0] = OLED_CONTROL_BYTE_DATA_STREAM;
-
-    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
-    brzo_i2c_write(framebuffer_full, sizeof(framebuffer_full), 0);
-    brzo_i2c_end_transaction();
-#else
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write(init, sizeof(init));
-    i2c_stop();
-
-    framebuffer_full[0] = OLED_CONTROL_BYTE_DATA_STREAM;
-
-    i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
-    i2c_write(framebuffer_full, sizeof(framebuffer_full));
-    i2c_stop();
-#endif
+        i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
+        i2c_write_byte(OLED_CONTROL_BYTE_DATA_STREAM);
+        i2c_write(framebuffer + y * 128, 128);
+        i2c_stop();
+    }
 }
 
-int ssd1306_init(void)
+int sh1106_init(void)
 {
-#ifdef BRZO
-    brzo_i2c_start_transaction(OLED_I2C_ADDRESS, SSD1306_I2C_FREQ);
-    brzo_i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq), 0);
-    int ret = brzo_i2c_end_transaction();
-#else
     int ret = i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) != I2C_ACK;
     if(!ret) {
         LOG("ACK");
-        i2c_write(ssd1306_init_seq, sizeof(ssd1306_init_seq));
+        i2c_write(sh1106_init_seq, sizeof(sh1106_init_seq));
     } else {
         LOG("No ACK");
     }
     i2c_stop();
-#endif
 
     return ret;
 }

@@ -1,5 +1,5 @@
-#ifndef SSD1306_CMD_H
-#define SSD1306_CMD_H
+#ifndef SH1106_CMD_H
+#define SH1106_CMD_H
 
 //~ DEFINES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Some defines for the SSD1306 controller driving a 128x64 resolution OLED display
@@ -33,9 +33,9 @@
 #define OLED_CMD_DISPLAY_ON       0xAF
 
 // Addressing Command Table (pg.30)
-#define OLED_CMD_SET_MEMORY_ADDR_MODE 0x20  // follow with 0x00 = HORZ mode = Behave like a KS108 graphic LCD
-#define OLED_CMD_SET_COLUMN_RANGE   0x21  // can be used only in HORZ/VERT mode - follow with 0x00 + 0x7F = COL127
-#define OLED_CMD_SET_PAGE_RANGE     0x22  // can be used only in HORZ/VERT mode - follow with 0x00 + 0x07 = PAGE7
+// #define OLED_CMD_SET_MEMORY_ADDR_MODE 0x20  // follow with 0x00 = HORZ mode = Behave like a KS108 graphic LCD
+// #define OLED_CMD_SET_COLUMN_RANGE   0x21  // can be used only in HORZ/VERT mode - follow with 0x00 + 0x7F = COL127
+// #define OLED_CMD_SET_PAGE_RANGE     0x22  // can be used only in HORZ/VERT mode - follow with 0x00 + 0x07 = PAGE7
 
 // Hardware Config (pg.31)
 #define OLED_CMD_SET_DISPLAY_START_LINE 0x40

@@ -1,5 +1,5 @@
-SOURCES := brzo_i2c.c fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
-    json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c ssd1306.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
+SOURCES := fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
+    json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c sh1106.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
     i2c-master.c
 
 TARGET=user
@@ -137,7 +137,7 @@ $(TSTBINDIR)/test_%: $(TSTOBJDIR)/test_%.o $(TSTOBJDIR)/%.o $(TSTOBJDIR)/unity.o
 	@$(TST_CC) -o $@ $^
 
 clean:
-	-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
+	-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
 
 .PRECIOUS: $(TSTBINDIR)/test_%
 .PRECIOUS: $(DEPDIR)/%.d
