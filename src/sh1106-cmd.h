@@ -54,4 +54,10 @@
 // Charge Pump (pg.62)
 #define OLED_CMD_SET_CHARGE_PUMP    0x8D  // follow with 0x14
 
+// SH1106 Commands
+#define OLED_CMD_COL_ADDRESS_LOW  0x00
+#define OLED_CMD_COL_ADDRESS_HIGH 0x10
+#define OLED_CMD_PAGE_ADDRESS 0xB0
+
+
 #endif

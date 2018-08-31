@@ -25,8 +25,6 @@ const uint8_t sh1106_init_seq[] = {
     // Set the display offset to 0
     OLED_CMD_SET_DISPLAY_OFFSET,
     0x00,
-    // Display start line to 0
-    // OLED_CMD_SET_DISPLAY_START_LINE,
 
     // Mirror the x-axis. In case you set it up such that the pins are north.
     // 0xA0, // - in case pins are south - default
@@ -50,33 +48,27 @@ const uint8_t sh1106_init_seq[] = {
     // Default oscillator clock
     OLED_CMD_SET_DISPLAY_CLK_DIV,
     0x80,
-    // Enable the charge pump
-    // OLED_CMD_SET_CHARGE_PUMP,
-    // 0x14,
     // Set precharge cycles to high cap type
     OLED_CMD_SET_PRECHARGE,
     0x22,
     // Set the V_COMH deselect volatage to max
     OLED_CMD_SET_VCOMH_DESELCT,
     0x30,
-    // Horizonatal addressing mode - same as the KS108 GLCD
-    // OLED_CMD_SET_MEMORY_ADDR_MODE,
-    // 0x00,
     // Turn the Display ON
     OLED_CMD_DISPLAY_ON,
 };
 
-static uint8_t framebuffer_full[FB_SIZE + 1] = {[0] = OLED_CONTROL_BYTE_DATA_STREAM};
-uint8_t *framebuffer = &framebuffer_full[1];
+uint8_t framebuffer[FB_SIZE];
+#define OLED_START_COL 2
 
 void fb_display(void)
 {
     for(int y = 0; y < 8; y++) {
         const uint8_t init_page[] = {
             OLED_CONTROL_BYTE_CMD_STREAM,
-            0x02,
-            0x10,
-            0xB0 | y,
+            OLED_CMD_COL_ADDRESS_LOW + OLED_START_COL,
+            OLED_CMD_COL_ADDRESS_HIGH,
+            OLED_CMD_PAGE_ADDRESS + y,
         };
 
         i2c_start(OLED_I2C_ADDRESS, I2C_WRITE);
