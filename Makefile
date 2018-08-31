@@ -1,6 +1,7 @@
-SOURCES := fonts.c http-client.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
+SOURCES := fonts.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
     json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c sh1106.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
-    i2c-master.c
+    i2c-master.c \
+    http-sm/http-client.c http-sm/http-io.c http-sm/http-parser.c http-sm/http-server.c http-sm/http-socket.c http-sm/http-util.c http-sm/http-server-main.c
 
 TARGET=user
 
@@ -61,26 +62,30 @@ all: build_dirs eagle.app.flash.bin
 -include $(DEPS)
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
+	@echo CC $@
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
 
 $(OBJDIR)/libuser.a: $(OBJ)
-	$(AR) ru $@ $^
+	@echo AR $@
+	@$(AR) ru $@ $^
 
 $(OBJDIR)/user.elf : $(OBJDIR)/libuser.a
-	$(CC) $(LDFLAGS) -o $@
+	@echo LINKING $@
+	@$(CC) $(LDFLAGS) -o $@
 
 eagle.app.flash.bin: $(OBJDIR)/user.elf
-	$(OBJCOPY) --only-section .text -O binary obj/user.elf eagle.app.v6.text.bin
-	$(OBJCOPY) --only-section .rodata -O binary obj/user.elf eagle.app.v6.rodata.bin
-	$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
-	$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
-	python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
-	mv eagle.app.v6.text.bin bin/eagle.app.v6.text.bin
-	mv eagle.app.v6.rodata.bin bin/eagle.app.v6.rodata.bin
-	mv eagle.app.v6.data.bin bin/eagle.app.v6.data.bin
-	mv eagle.app.v6.irom0text.bin bin/eagle.app.v6.irom0text.bin
-	mv eagle.app.flash.bin bin/eagle.app.flash.bin
+	@echo OBJCOPY $@
+	@$(OBJCOPY) --only-section .text -O binary obj/user.elf eagle.app.v6.text.bin
+	@$(OBJCOPY) --only-section .rodata -O binary obj/user.elf eagle.app.v6.rodata.bin
+	@$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
+	@$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
+	@python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
+	@mv eagle.app.v6.text.bin bin/eagle.app.v6.text.bin
+	@mv eagle.app.v6.rodata.bin bin/eagle.app.v6.rodata.bin
+	@mv eagle.app.v6.data.bin bin/eagle.app.v6.data.bin
+	@mv eagle.app.v6.irom0text.bin bin/eagle.app.v6.irom0text.bin
+	@mv eagle.app.flash.bin bin/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin

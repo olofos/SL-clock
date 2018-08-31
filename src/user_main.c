@@ -9,7 +9,7 @@
 #include <fcntl.h>
 
 #include "uart.h"
-#include "http-client.h"
+//#include "http-client.h"
 #include "timezone-db.h"
 #include "journey.h"
 #include "journey-task.h"
@@ -21,6 +21,7 @@
 #include "display.h"
 #include "display-message.h"
 
+#include "http-sm/http.h"
 
 #include "log.h"
 
@@ -156,6 +157,41 @@ void journey_test_task(void *pvParameters)
     }
 }
 
+void http_test_task(void *pvParameters)
+{
+    for(;;)
+    {
+        while(!app_status.wifi_connected)
+        {
+            LOG("WIFI not ready");
+            vTaskDelayMs(1000);
+        }
+
+        struct http_request request = {
+            .host = "www.google.com",
+            .path = "/",
+            .port = 80,
+        };
+
+        if(http_get_request(&request) > 0) {
+            LOG("http_get_request succeeded with status %d", request.status);
+
+            int c;
+            while((c = http_getc(&request)) > 0) {
+                printf("%c", c);
+            }
+            printf("\r\n");
+        } else {
+            LOG("http_get_request failed");
+        }
+
+        http_close(&request);
+
+        vTaskDelayMs(5000);
+    }
+}
+
+
 void user_init(void)
 {
     uart_init_new();
@@ -172,7 +208,9 @@ void user_init(void)
     setenv("TZ", "GMT0", 1);
     tzset();
 
+#if 0
     http_mutex = xSemaphoreCreateMutex();
+#endif
 
 #ifdef TEST_JOURNEY_TASK
     xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);

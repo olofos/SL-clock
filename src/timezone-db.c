@@ -6,6 +6,7 @@
 #include "json.h"
 #include "json-util.h"
 #include "json-http.h"
+#include "http-sm/http.h"
 #include "keys.h"
 #include "timezone-db.h"
 #include "status.h"
@@ -48,7 +49,7 @@ const char *timezone_get_timezone(void)
 }
 
 
-static void construct_http_request(struct HTTPRequest *request, char buf[], size_t buf_len)
+static void construct_http_request(struct http_request *request, char buf[], size_t buf_len)
 {
     snprintf(buf, buf_len, "/v2/get-time-zone?format=json&key=%s&by=zone&zone=%s&fields=countryName,zoneName,abbreviation,gmtOffset,dst,dstStart,dstEnd", KEY_TIMEZONEDB, timezone_name);
 
@@ -192,20 +193,25 @@ static int timezone_db_parse_json(json_stream *json)
 
 static int update_timezone(void)
 {
-    struct HTTPRequest request;
+    struct http_request request;
     const int buf_size = 256;
     char *buf = malloc(buf_size);
 
     construct_http_request(&request, buf, buf_size);
 
-    if(http_open(&request) < 0)
-    {
-        LOG("http_open failed");
-        return -1;
-    }
+    // if(http_open(&request) < 0)
+    // {
+    //     LOG("http_open failed");
+    //     return -1;
+    // }
 
-    if(http_get(&request) < 0) {
-        LOG("http_get failed");
+    // if(http_get(&request) < 0) {
+    //     LOG("http_get failed");
+    //     return -1;
+    // }
+
+    if(http_get_request(&request) < 0) {
+        LOG("http_get_request failed");
         return -1;
     }
 
@@ -246,13 +252,13 @@ void timezone_db_task(void *pvParameters)
 
             LOG("Updating timezone");
 
-            if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
+            // if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
             {
-                LOG("Took HTTP mutex");
+                // LOG("Took HTTP mutex");
                 int ret = update_timezone();
-                LOG("Give back HTTP mutex");
+                // LOG("Give back HTTP mutex");
 
-                xSemaphoreGive(http_mutex);
+                // xSemaphoreGive(http_mutex);
 
                 if(ret < 0)
                 {

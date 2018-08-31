@@ -1,7 +1,6 @@
 #include <esp_common.h>
 #include <string.h>
 
-#include "http-client.h"
 #include "json.h"
 #include "json-util.h"
 #include "json-http.h"
@@ -9,6 +8,7 @@
 #include "journey-task.h"
 #include "keys.h"
 #include "status.h"
+#include "http-sm/http.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_JOURNEY
@@ -31,7 +31,7 @@ void journey_set_journey(uint8_t num, const struct journey *jour)
 }
 
 
-static void construct_http_request(const struct journey *jour, struct HTTPRequest *request, char buf[], size_t buf_len)
+static void construct_http_request(const struct journey *jour, struct http_request *request, char buf[], size_t buf_len)
 {
     const char str_true[] = "true";
     const char str_false[] = "false";
@@ -55,19 +55,24 @@ static void construct_http_request(const struct journey *jour, struct HTTPReques
 
 static int update_journey(struct journey *journey)
 {
-    struct HTTPRequest request;
+    struct http_request request;
     char buf[256];
 
     construct_http_request(journey, &request, buf, sizeof(buf));
 
-    if(http_open(&request) < 0)
-    {
-        LOG("http_open failed");
-        return -1;
-    }
+    // if(http_open(&request) < 0)
+    // {
+    //     LOG("http_open failed");
+    //     return -1;
+    // }
 
-    if(http_get(&request) < 0) {
-        LOG("http_get failed");
+    // if(http_get(&request) < 0) {
+    //     LOG("http_get failed");
+    //     return -1;
+    // }
+
+    if(http_get_request(&request) < 0) {
+        LOG("http_get_request failed");
         return -1;
     }
 
@@ -141,12 +146,12 @@ void journey_task(void *pvParameters)
             } else {
                 LOG("Updating journey %d", j);
 
-                if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
+                // if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
                 {
-                    LOG("Took HTTP mutex");
+                //     LOG("Took HTTP mutex");
                     int ret = update_journey(journey);
-                    LOG("Give back HTTP mutex");
-                    xSemaphoreGive(http_mutex);
+                //     LOG("Give back HTTP mutex");
+                //     xSemaphoreGive(http_mutex);
 
 
                     if(ret < 0)
@@ -175,9 +180,9 @@ void journey_task(void *pvParameters)
 
                     LOG("Next update at %s", buf);
                     printf("\n");
-                } else {
-                    LOG("Could not take HTTP semaphore");
-                }
+                } // else {
+                //     LOG("Could not take HTTP semaphore");
+                // }
             }
         }
     }
