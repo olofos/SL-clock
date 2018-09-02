@@ -35,11 +35,11 @@
 #define NOBLINK 0
 
 #define X_OFFSET 20
+#define X_OFFSET_LINE 40
 
 #define Y_CLOCK 10
-#define Y_JOURNEY_1 33
-#define Y_JOURNEY_2 55
-
+#define Y_JOURNEY_1 32
+#define Y_JOURNEY_2 54
 
 struct journey_display_state
 {
@@ -299,9 +299,10 @@ static void display_init()
     journey_single_display_state.current[1] = 0;
 }
 
-static void draw_journey_row(struct journey_display_state *state)
+static void draw_journey_row(const struct journey_display_state *state, const struct journey *journey)
 {
     draw_row(state->x_shift, state->y_shift, state->icon, &state->current, 0);
+    fb_draw_string(X_OFFSET_LINE + state->x_shift, state->y_shift, journey->line, 0, font_3x5, FB_ALIGN_CENTER_V);
 }
 
 static void draw_journey_single(struct journey_single_display_state *state)
@@ -312,6 +313,7 @@ static void draw_journey_single(struct journey_single_display_state *state)
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
         fb_draw_icon(X_OFFSET, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        fb_draw_string(X_OFFSET_LINE, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_BOTH_IN:
@@ -319,6 +321,7 @@ static void draw_journey_single(struct journey_single_display_state *state)
         draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
         fb_draw_icon(X_OFFSET + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        fb_draw_string(X_OFFSET_LINE + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_ICON_UP_OUT:
@@ -326,12 +329,14 @@ static void draw_journey_single(struct journey_single_display_state *state)
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
         fb_draw_icon(X_OFFSET, state->y_shift, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        fb_draw_string(X_OFFSET_LINE, state->y_shift, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_ONE_OUT:
         draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
         fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_1, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        fb_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_1, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_JOURNEY_UP:
@@ -342,9 +347,8 @@ static void draw_journey_single(struct journey_single_display_state *state)
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
         fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        fb_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
         break;
-
-
     }
 }
 
@@ -506,7 +510,7 @@ void display_task(void *pvParameters)
                 update_journey_display_state(&journey_display_states[i], &journies[i].departures[0]);
 
                 for(int i = 0; i < 2; i++) {
-                    draw_journey_row(&journey_display_states[i]);
+                    draw_journey_row(&journey_display_states[i], &journies[i]);
                 }
             }
         } else if(num_journies == 1) {
