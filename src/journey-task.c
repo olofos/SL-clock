@@ -56,6 +56,8 @@ static void construct_http_request(const struct journey *jour, struct http_reque
 static int update_journey(struct journey *journey)
 {
     struct http_request request;
+    http_request_init(&request);
+
     char buf[256];
 
     construct_http_request(journey, &request, buf, sizeof(buf));

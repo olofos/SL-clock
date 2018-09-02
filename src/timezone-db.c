@@ -53,8 +53,11 @@ static void construct_http_request(struct http_request *request, char buf[], siz
 {
     snprintf(buf, buf_len, "/v2/get-time-zone?format=json&key=%s&by=zone&zone=%s&fields=countryName,zoneName,abbreviation,gmtOffset,dst,dstStart,dstEnd", KEY_TIMEZONEDB, timezone_name);
 
+    LOG("Path: \"%s\"", buf);
+
     request->host = "api.timezonedb.com";
     request->path = buf;
+    request->query = 0;
     request->port = 80;
 }
 
@@ -194,6 +197,9 @@ static int timezone_db_parse_json(json_stream *json)
 static int update_timezone(void)
 {
     struct http_request request;
+
+    http_request_init(&request);
+
     const int buf_size = 256;
     char *buf = malloc(buf_size);
 
@@ -217,6 +223,8 @@ static int update_timezone(void)
 
     json_stream *json = malloc(sizeof(json_stream));
     json_open_http(json, &request);
+
+    LOG("Parsing TZDB json");
     int ret = timezone_db_parse_json(json);
 
     if (json_get_error(json)) {

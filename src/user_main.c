@@ -217,7 +217,8 @@ void user_init(void)
     xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
 #else
     xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
-    xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
+    // xTaskCreate(&http_test_task, "http_test_task", 384, NULL, 6, NULL);
+    // xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
     xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
     xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
     xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
