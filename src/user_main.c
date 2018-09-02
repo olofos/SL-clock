@@ -174,12 +174,16 @@ void user_init(void)
 
     http_mutex = xSemaphoreCreateMutex();
 
+#ifdef TEST_JOURNEY_TASK
+    xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
+    xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
+#else
     xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
     xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
     xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
     xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
     xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
+#endif
 
     // xTaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
-    // xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
 }
