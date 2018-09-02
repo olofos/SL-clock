@@ -117,7 +117,7 @@ void journey_task(void *pvParameters)
 
             if(!journey->line[0])
             {
-                LOG("Journey %d: empty line", j);
+                // LOG("Journey %d: empty line", j);
                 continue;
             }
 
@@ -129,24 +129,15 @@ void journey_task(void *pvParameters)
 
             if(journey->next_update - now > 0)
             {
-                while((journey->next_departure < JOURNEY_MAX_DEPARTURES) &&
-                      (journey->departures[journey->next_departure] > 0) &&
-                      (journey->departures[journey->next_departure] - now <= 0))
-                {
+                while((journey->departures[0] > 0) && (journey->departures[0] - now <= 0)) {
                     char buf[32];
-                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[journey->next_departure]));
+                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[0]));
+                    LOG("%d: Departured at %s", j, buf);
 
-                    LOG("%d: Departure %d left at %s", j, journey->next_departure, buf);
-
-                    journey->next_departure++;
-
-                    if((journey->next_departure < JOURNEY_MAX_DEPARTURES) && (journey->departures[journey->next_departure] > 0))
-                    {
-                        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[journey->next_departure]));
-                        LOG("%d: Next departure is at %s", j, buf);
+                    for(int i = 0; i < JOURNEY_MAX_DEPARTURES - 1; i++) {
+                        journey->departures[i] = journey->departures[i+1];
                     }
                 }
-
             } else {
                 LOG("Updating journey %d", j);
 

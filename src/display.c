@@ -22,13 +22,42 @@
 #define STATE_SHIFT_IN 2
 #define STATE_NO_DISPLAY 3
 
+#define STATE_SINGLE_DISPLAY 0
+#define STATE_SINGLE_SHIFT_BOTH_OUT 1
+#define STATE_SINGLE_SHIFT_BOTH_IN 2
+#define STATE_SINGLE_SHIFT_ONE_OUT 3
+#define STATE_SINGLE_SHIFT_ICON_UP_OUT 4
+#define STATE_SINGLE_SHIFT_JOURNEY_UP 5
+#define STATE_SINGLE_SHIFT_ONE_IN 6
+#define STATE_SINGLE_SHIFT_ICON_UP_IN 7
+
 #define BLINK 1
 #define NOBLINK 0
+
+#define X_OFFSET 20
+
+#define Y_CLOCK 10
+#define Y_JOURNEY_1 33
+#define Y_JOURNEY_2 55
+
 
 struct journey_display_state
 {
     time_t current;
     time_t next;
+    int16_t x_shift;
+    int16_t y_shift;
+    uint8_t state;
+
+    portTickType anim_start;
+
+    struct icon *icon;
+};
+
+struct journey_single_display_state
+{
+    time_t current[2];
+    time_t next[2];
     int16_t x_shift;
     int16_t y_shift;
     uint8_t state;
@@ -53,16 +82,16 @@ struct message_state
 static struct icon *clock_icon;
 static struct icon *noclock_icon;
 static struct icon *nowifi_icons[4];
-static struct icon *journey_icons[2];
+static struct icon *journey_icons[6];
 
 static struct journey_display_state journey_display_states[2];
+struct journey_single_display_state journey_single_display_state;
 
 static uint8_t animation_running;
 
 static struct message_state message_state = { .state = STATE_NO_DISPLAY, .current = DISPLAY_MESSAGE_NONE, .next = DISPLAY_MESSAGE_NONE, .y = 2*FB_HEIGHT };
 
 xQueueHandle display_message_queue;
-
 
 static void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t *t, int blink)
 {
@@ -80,11 +109,14 @@ static void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t
         sprintf(str, "--:--");
     }
 
-    fb_draw_icon(x, y, icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-    fb_draw_string(x + 55, y, str, 0, Monospaced_bold_16, FB_ALIGN_CENTER_V);
+    if(icon) {
+        fb_draw_icon(X_OFFSET + x, y, icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+    }
+
+    fb_draw_string(X_OFFSET + x + 55, y, str, 0, Monospaced_bold_16, FB_ALIGN_CENTER_V);
 }
 
-static void update_state(struct journey_display_state *state, const time_t *next)
+static void update_journey_display_state(struct journey_display_state *state, const time_t *next)
 {
     switch(state->state)
     {
@@ -125,6 +157,111 @@ static void update_state(struct journey_display_state *state, const time_t *next
     }
 }
 
+static void update_journey_single_display_state(struct journey_single_display_state *state, const time_t *next)
+{
+    switch(state->state)
+    {
+    case STATE_SINGLE_DISPLAY:
+        if(next[0] != state->current[0]) {
+            if(next[0] != state->current[1]) {
+                state->state = STATE_SINGLE_SHIFT_BOTH_OUT;
+
+                state->anim_start = xTaskGetTickCount();
+                state->next[0] = next[0];
+                state->next[1] = next[1];
+
+                animation_running++;
+            } else {
+                state->state = STATE_SINGLE_SHIFT_ICON_UP_OUT;
+                state->y_shift = (Y_JOURNEY_1 + Y_JOURNEY_2) / 2;
+
+                state->anim_start = xTaskGetTickCount();
+                state->next[0] = next[0];
+                state->next[1] = next[1];
+
+                animation_running++;
+            }
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_BOTH_OUT:
+        state->x_shift = (xTaskGetTickCount() - state->anim_start);
+
+        if(state->x_shift >= 128)
+        {
+            state->x_shift = 128;
+            state->state = STATE_SINGLE_SHIFT_BOTH_IN;
+            state->anim_start = xTaskGetTickCount();
+            state->current[0] = state->next[0];
+            state->current[1] = state->next[1];
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_BOTH_IN:
+        state->x_shift = 128 - (xTaskGetTickCount() - state->anim_start);
+
+        if(state->x_shift <= 0)
+        {
+            state->x_shift = 0;
+            state->state = STATE_SINGLE_DISPLAY;
+
+            animation_running--;
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_ICON_UP_OUT:
+        state->y_shift = (Y_JOURNEY_1 + Y_JOURNEY_2) / 2 - (xTaskGetTickCount() - state->anim_start)/2;
+        if(state->y_shift <= Y_JOURNEY_1) {
+            state->x_shift = 0;
+            state->state = STATE_SINGLE_SHIFT_ONE_OUT;
+            state->anim_start = xTaskGetTickCount();
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_ONE_OUT:
+        state->x_shift = (xTaskGetTickCount() - state->anim_start);
+
+        if(state->x_shift >= 128)
+        {
+            state->y_shift = Y_JOURNEY_2;
+            state->state = STATE_SINGLE_SHIFT_JOURNEY_UP;
+            state->anim_start = xTaskGetTickCount();
+
+            state->current[0] = state->next[0];
+            state->current[1] = state->next[1];
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_JOURNEY_UP:
+        state->y_shift = Y_JOURNEY_2 - (xTaskGetTickCount() - state->anim_start)/2;
+        if(state->y_shift <= Y_JOURNEY_1) {
+            state->x_shift = 128;
+            state->state = STATE_SINGLE_SHIFT_ONE_IN;
+            state->anim_start = xTaskGetTickCount();
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_ONE_IN:
+        state->x_shift = 128 - (xTaskGetTickCount() - state->anim_start);
+
+        if(state->x_shift <= 0)
+        {
+            state->y_shift = Y_JOURNEY_2;
+            state->state = STATE_SINGLE_SHIFT_ICON_UP_IN;
+            state->anim_start = xTaskGetTickCount();
+        }
+        break;
+
+    case STATE_SINGLE_SHIFT_ICON_UP_IN:
+        state->y_shift = Y_JOURNEY_2 - (xTaskGetTickCount() - state->anim_start)/2;
+        if(state->y_shift <= (Y_JOURNEY_1 + Y_JOURNEY_2) / 2) {
+            state->state = STATE_SINGLE_DISPLAY;
+            animation_running--;
+        }
+        break;
+    }
+}
+
 
 static void display_init()
 {
@@ -147,19 +284,71 @@ static void display_init()
     nowifi_icons[2] = fb_load_icon_pbm("/icons/nowifi3.pbm");
     nowifi_icons[3] = fb_load_icon_pbm("/icons/nowifi4.pbm");
 
-    journey_icons[0] = fb_load_icon_pbm("/icons/boat.pbm");
-    journey_icons[1] = fb_load_icon_pbm("/icons/bus.pbm");
+    journey_icons[TRANSPORT_MODE_UNKNOWN] = 0;
+    journey_icons[TRANSPORT_MODE_BUS] = fb_load_icon_pbm("/icons/bus.pbm");
+    journey_icons[TRANSPORT_MODE_METRO] = fb_load_icon_pbm("/icons/subway.pbm");
+    journey_icons[TRANSPORT_MODE_TRAIN] = fb_load_icon_pbm("/icons/train.pbm");
+    journey_icons[TRANSPORT_MODE_TRAM] = fb_load_icon_pbm("/icons/tram.pbm");
+    journey_icons[TRANSPORT_MODE_SHIP] = fb_load_icon_pbm("/icons/boat.pbm");
 
-    journey_display_states[0] = (struct journey_display_state) { .x_shift = 0, .y_shift = 35, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = journey_icons[0] };
-    journey_display_states[1] = (struct journey_display_state) { .x_shift = 0, .y_shift = 56, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = journey_icons[1] };
+    journey_display_states[0] = (struct journey_display_state) { .x_shift = 0, .y_shift = Y_JOURNEY_1, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = 0 };
+    journey_display_states[1] = (struct journey_display_state) { .x_shift = 0, .y_shift = Y_JOURNEY_2, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = 0 };
+
+    journey_single_display_state = (struct journey_single_display_state) { .x_shift = 0, .y_shift = 0, .state = STATE_SINGLE_DISPLAY };
+    journey_single_display_state.current[0] = 0;
+    journey_single_display_state.current[1] = 0;
 }
 
-static void draw_journey_row(int16_t x, struct journey_display_state *state)
+static void draw_journey_row(struct journey_display_state *state)
 {
-    draw_row(x + state->x_shift, state->y_shift, state->icon, &state->current, 0);
+    draw_row(state->x_shift, state->y_shift, state->icon, &state->current, 0);
 }
 
-static void draw_clock_row(int16_t x)
+static void draw_journey_single(struct journey_single_display_state *state)
+{
+    switch(state->state)
+    {
+    case STATE_SINGLE_DISPLAY:
+        draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
+        draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
+        fb_draw_icon(X_OFFSET, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        break;
+
+    case STATE_SINGLE_SHIFT_BOTH_IN:
+    case STATE_SINGLE_SHIFT_BOTH_OUT:
+        draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
+        draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
+        fb_draw_icon(X_OFFSET + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        break;
+
+    case STATE_SINGLE_SHIFT_ICON_UP_OUT:
+    case STATE_SINGLE_SHIFT_ICON_UP_IN:
+        draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
+        draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
+        fb_draw_icon(X_OFFSET, state->y_shift, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        break;
+
+    case STATE_SINGLE_SHIFT_ONE_OUT:
+        draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
+        draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
+        fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_1, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        break;
+
+    case STATE_SINGLE_SHIFT_JOURNEY_UP:
+        draw_row(0, state->y_shift, 0, &state->current[0], 0);
+        break;
+
+    case STATE_SINGLE_SHIFT_ONE_IN:
+        draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
+        draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
+        fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        break;
+
+
+    }
+}
+
+static void draw_clock_row(void)
 {
     if(!app_status.wifi_connected)
     {
@@ -174,13 +363,13 @@ static void draw_clock_row(int16_t x)
 
         uint32_t n = xTaskGetTickCount() / 25;
 
-        draw_row(x, 10, nowifi_icons[n & 0x03], &now, BLINK);
+        draw_row(0, Y_CLOCK, nowifi_icons[n & 0x03], &now, BLINK);
     } else if(!(app_status.obtained_time && app_status.obtained_tz)) {
         time_t now = 0;
-        draw_row(x, 10, noclock_icon, &now, BLINK);
+        draw_row(0, Y_CLOCK, noclock_icon, &now, BLINK);
     } else {
         time_t now = time(0);
-        draw_row(x, 10, clock_icon, &now, BLINK);
+        draw_row(0, Y_CLOCK, clock_icon, &now, BLINK);
     }
 }
 
@@ -295,24 +484,37 @@ void display_task(void *pvParameters)
 {
     display_init();
 
-    const int16_t x_base = 20;
-
     for(;;)
     {
-        for(int i = 0; i < 2; i++) {
-            update_state(&journey_display_states[i], &journies[i].departures[journies[i].next_departure]);
-        }
-
         fb_clear();
 
         fb_set_pen(FB_NORMAL);
 
-        draw_clock_row(x_base);
+        draw_clock_row();
 
-        for(int i = 0; i < 2; i++) {
-            draw_journey_row(x_base, &journey_display_states[i]);
+        int num_journies = 0;
+
+        if(journies[1].line[0]) {
+            num_journies = 2;
+        } else if(journies[0].line[0]) {
+            num_journies = 1;
         }
 
+        if(num_journies == 2) {
+            for(int i = 0; i < 2; i++) {
+                journey_display_states[i].icon = journey_icons[journies[i].mode];
+                update_journey_display_state(&journey_display_states[i], &journies[i].departures[0]);
+
+                for(int i = 0; i < 2; i++) {
+                    draw_journey_row(&journey_display_states[i]);
+                }
+            }
+        } else if(num_journies == 1) {
+            journey_single_display_state.icon = journey_icons[journies[0].mode];
+
+            update_journey_single_display_state(&journey_single_display_state, journies[0].departures);
+            draw_journey_single(&journey_single_display_state);
+        }
 
         if(message_state.current == message_state.next) {
             uint8_t message;

@@ -37,12 +37,11 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
         {
             json_expect(json,JSON_OBJECT);
 
+            uint8_t num_departs = 0;
 
             while(json_find_names(json, (const char *[]){"Metros", "Buses", "Trains", "Trams", "Ships"}, 5) >= 0)
             {
                 json_expect(json, JSON_ARRAY);
-
-                uint8_t num_departs = 0;
 
                 while(json_next(json) == JSON_OBJECT)
                 {
@@ -148,11 +147,10 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                     }
                     printf("\n");
                 }
+            }
 
-                if(num_departs > 0)
-                {
-                    jour->next_departure = 0;
-                }
+            while(num_departs < JOURNEY_MAX_DEPARTURES) {
+                jour->departures[num_departs++] = 0;
             }
         }
 

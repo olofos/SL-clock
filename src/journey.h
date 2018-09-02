@@ -37,7 +37,6 @@ struct journey {
     uint8_t direction;
 
     time_t departures[JOURNEY_MAX_DEPARTURES];
-    uint8_t next_departure;
 
     time_t next_update;
 };

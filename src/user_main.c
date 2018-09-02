@@ -19,6 +19,8 @@
 #include "wifi-task.h"
 #include "config.h"
 #include "display.h"
+#include "display-message.h"
+
 
 #include "log.h"
 
@@ -110,16 +112,45 @@ void tz_test_task(void *pvParameters)
 
 void journey_test_task(void *pvParameters)
 {
+    journies[1].line[0] = 0;
+
+    journies[0].mode = TRANSPORT_MODE_SHIP;
+    journies[1].mode = TRANSPORT_MODE_BUS;
+
+    for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
+    {
+        journies[i].departures[0] = 300;
+        journies[i].departures[1] = journies[i].departures[0] + 300;
+    }
+
+    vTaskDelayMs(5000);
+    journies[0].departures[0] += 300;
+    journies[0].departures[1] = journies[0].departures[0] + 300;
+
+
     for(;;)
     {
         for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
         {
             if(!(rand() & 0x03))
             {
-                journies[i].next_departure = 0;
                 journies[i].departures[0] += 300;
+                journies[i].departures[1] = journies[i].departures[0] + 300;
             }
         }
+
+#ifdef TEST_DISPLAY_MESSAGE
+        static int msg = 0;
+        if(!(rand() & 0x03)) {
+            if(msg) {
+                display_post_message(DISPLAY_MESSAGE_NONE);
+                msg = 0;
+            } else {
+                display_post_message(DISPLAY_MESSAGE_NO_WIFI);
+                msg = 1;
+            }
+        }
+#endif
 
         vTaskDelayMs(5000);
     }
