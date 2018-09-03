@@ -1,0 +1,3 @@
+[submodule "http-sm"]
+	path = http-sm
+	url = git@github.com:olofos/http-sm.git
