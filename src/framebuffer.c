@@ -179,8 +179,9 @@ struct icon *fb_load_icon_pbm(const char *filename)
     LOG("Loading icon from file %s", filename);
 
     int fd = open(filename, O_RDONLY);
-    if(!fd)
+    if(fd < 0)
     {
+        LOG("File \"%s\" not found", filename);
         return 0;
     }
 
