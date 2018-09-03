@@ -64,7 +64,7 @@ all: build_dirs eagle.app.flash.bin
 -include $(DEPS)
 
 http-sm/lib/libhttp-sm.a:
-	$(V)make CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Chttp-sm/ lib/libhttp-sm.a
+	$(V)$(MAKE) CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Chttp-sm/ lib/libhttp-sm.a
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo CC $@
@@ -149,7 +149,7 @@ $(TSTBINDIR)/test_%: $(TSTOBJDIR)/test_%.o $(TSTOBJDIR)/%.o $(TSTOBJDIR)/unity.o
 clean:
 	@echo Cleaning
 	$(V)-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
-	$(V)make -Chttp-sm clean
+	$(V)$(MAKE) -Chttp-sm clean
 
 .PRECIOUS: $(TSTBINDIR)/test_%
 .PRECIOUS: $(DEPDIR)/%.d
