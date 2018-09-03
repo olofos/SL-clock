@@ -52,6 +52,6 @@ void log_init(void);
 void log_set_level(uint8_t dests, enum log_level level, enum log_system system);
 
 #define LOG(...) log_log(LOG_INFO, LOG_SYS, __VA_ARGS__)
-
+#define LOG_ERROR(str) log_log(LOG_INFO, LOG_SYS, str)
 
 #endif

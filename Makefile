@@ -1,7 +1,8 @@
+V=@
+
 SOURCES := fonts.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
     json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c sh1106.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
-    i2c-master.c \
-    http-sm/http-client.c http-sm/http-io.c http-sm/http-parser.c http-sm/http-server.c http-sm/http-socket.c http-sm/http-util.c http-sm/http-server-main.c
+    i2c-master.c
 
 TARGET=user
 
@@ -34,9 +35,10 @@ CFLAGS = -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -f
 
 LDFILE = ld/eagle.app.v6.ld
 
-LDFLAGS = -L$(SDK_PATH)/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lwps -Wl,--end-group
+LDFLAGS = -L$(SDK_PATH)/lib -Lsrc/http-sm/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lhttp-sm -lwps -Wl,--end-group
 
 INCLUDES := $(INCLUDES)
+INCLUDES += -Isrc/http-sm/include
 INCLUDES += -I$(SDK_PATH)/include
 INCLUDES += -I$(SDK_PATH)/extra_include
 INCLUDES += -I$(SDK_PATH)/driver_lib/include
@@ -61,31 +63,34 @@ all: build_dirs eagle.app.flash.bin
 
 -include $(DEPS)
 
+src/http-sm/lib/libhttp-sm.a:
+	$(V)make CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I.. -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Csrc/http-sm/ lib/libhttp-sm.a
+
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo CC $@
-	@$(CC) $(CFLAGS) -c $< -o $@
-	@$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
+	$(V)$(CC) $(CFLAGS) -c $< -o $@
+	$(V)$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
 
 $(OBJDIR)/libuser.a: $(OBJ)
 	@echo AR $@
-	@$(AR) ru $@ $^
+	$(V)$(AR) ru $@ $^
 
-$(OBJDIR)/user.elf : $(OBJDIR)/libuser.a
+$(OBJDIR)/user.elf : $(OBJDIR)/libuser.a src/http-sm/lib/libhttp-sm.a
 	@echo LINKING $@
-	@$(CC) $(LDFLAGS) -o $@
+	$(V)$(CC) $(LDFLAGS) -o $@
 
 eagle.app.flash.bin: $(OBJDIR)/user.elf
 	@echo OBJCOPY $@
-	@$(OBJCOPY) --only-section .text -O binary obj/user.elf eagle.app.v6.text.bin
-	@$(OBJCOPY) --only-section .rodata -O binary obj/user.elf eagle.app.v6.rodata.bin
-	@$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
-	@$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
-	@python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
-	@mv eagle.app.v6.text.bin bin/eagle.app.v6.text.bin
-	@mv eagle.app.v6.rodata.bin bin/eagle.app.v6.rodata.bin
-	@mv eagle.app.v6.data.bin bin/eagle.app.v6.data.bin
-	@mv eagle.app.v6.irom0text.bin bin/eagle.app.v6.irom0text.bin
-	@mv eagle.app.flash.bin bin/eagle.app.flash.bin
+	$(V)$(OBJCOPY) --only-section .text -O binary obj/user.elf eagle.app.v6.text.bin
+	$(V)$(OBJCOPY) --only-section .rodata -O binary obj/user.elf eagle.app.v6.rodata.bin
+	$(V)$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
+	$(V)$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
+	$(V)python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
+	$(V)mv eagle.app.v6.text.bin bin/eagle.app.v6.text.bin
+	$(V)mv eagle.app.v6.rodata.bin bin/eagle.app.v6.rodata.bin
+	$(V)mv eagle.app.v6.data.bin bin/eagle.app.v6.data.bin
+	$(V)mv eagle.app.v6.irom0text.bin bin/eagle.app.v6.irom0text.bin
+	$(V)mv eagle.app.flash.bin bin/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
@@ -116,7 +121,7 @@ test: build_dirs $(TST_RESULTS)
 	@! grep -s FAIL $(RESULTDIR)/*.txt 2>&1 1>/dev/null
 
 build_dirs:
-	@mkdir -p $(BUILD_DIRS)
+	$(V)mkdir -p $(BUILD_DIRS)
 
 
 $(RESULTDIR)/%.txt: $(TSTBINDIR)/%
@@ -127,22 +132,23 @@ $(RESULTDIR)/%.txt: $(TSTBINDIR)/%
 
 $(TSTOBJDIR)/%.o : $(TSTDIR)/%.c
 	@echo CC $@
-	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
 
 $(TSTOBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo CC $@
-	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
 
 $(TSTOBJDIR)/%.o : $(UNITYDIR)/%.c
 	@echo CC $@
-	@$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
 
 $(TSTBINDIR)/test_%: $(TSTOBJDIR)/test_%.o $(TSTOBJDIR)/%.o $(TSTOBJDIR)/unity.o
 	@echo CC $@
-	@$(TST_CC) -o $@ $^
+	$(V)$(TST_CC) -o $@ $^
 
 clean:
-	-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
+	@echo Cleaning
+	$(V)-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
 
 .PRECIOUS: $(TSTBINDIR)/test_%
 .PRECIOUS: $(DEPDIR)/%.d
