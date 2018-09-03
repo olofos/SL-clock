@@ -38,7 +38,7 @@ LDFILE = ld/eagle.app.v6.ld
 LDFLAGS = -L$(SDK_PATH)/lib -Lhttp-sm/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lhttp-sm -lwps -Wl,--end-group
 
 INCLUDES := $(INCLUDES)
-INCLUDES += -I../http-sm/include
+INCLUDES += -Ihttp-sm/include
 INCLUDES += -I$(SDK_PATH)/include
 INCLUDES += -I$(SDK_PATH)/extra_include
 INCLUDES += -I$(SDK_PATH)/driver_lib/include
