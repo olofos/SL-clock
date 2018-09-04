@@ -311,9 +311,11 @@ const char *http_get_mime_type(const char *path)
 
     const struct http_mime_map *p;
 
-    if(ext) {
-        ext++;
+    if(!ext) {
+        return "text/plain";
     }
+
+    ext++;
 
     for(p = mime_tab; p->ext; p++) {
         if(!strcmp(ext, p->ext)) {
@@ -343,10 +345,6 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
             www_prefix = WWW_DIR;
         }
 
-        if(base_filename[strlen(base_filename)-1] == '/') {
-            return HTTP_CGI_NOT_FOUND;
-        }
-
         char *filename;
 
         filename = malloc(strlen(WWW_DIR) + strlen(base_filename) + strlen(GZIP_EXT) + 1);
@@ -361,13 +359,15 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         LOG("Opening file \"%s\"", filename);
         int fd = open(filename, O_RDONLY);
 
+        if(fd < 0) {
+            free(filename);
+            return HTTP_CGI_NOT_FOUND;
+        }
+
         const char *mime_type = http_get_mime_type(filename);
 
         free(filename);
 
-        if(fd < 0) {
-            return HTTP_CGI_NOT_FOUND;
-        }
 
         request->cgi_data = malloc(sizeof(struct http_spiffs_response));
 
