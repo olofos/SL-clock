@@ -191,6 +191,242 @@ void http_test_task(void *pvParameters)
     }
 }
 
+enum http_cgi_state cgi_not_found(struct http_request* request)
+{
+    const char *response = "Not found\r\n";
+
+    http_begin_response(request, 404, "text/plain");
+    http_set_content_length(request, strlen(response));
+    http_end_header(request);
+    http_write_string(request, response);
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+
+enum http_cgi_state cgi_simple(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    const char *response = "This is a response from \'cgi_simple\'\r\n";
+
+    http_begin_response(request, 200, "text/plain");
+    http_set_content_length(request, strlen(response));
+    http_end_header(request);
+
+    http_write_string(request, response);
+
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+enum http_cgi_state cgi_query(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    http_begin_response(request, 200, "text/plain");
+    http_end_header(request);
+
+    http_write_string(request, "This is a response from \'cgi_query\'\r\n");
+    http_write_string(request, "The parameters were:\r\n");
+
+    const char *sa = http_get_query_arg(request, "a");
+    const char *sb = http_get_query_arg(request, "b");
+
+    if(sa) {
+        http_write_string(request, "a = ");
+        http_write_string(request, sa);
+        http_write_string(request, "\r\n");
+    }
+
+    if(sb) {
+        http_write_string(request, "b = ");
+        http_write_string(request, sb);
+        http_write_string(request, "\r\n");
+    }
+
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+enum http_cgi_state cgi_stream(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    if(!request->cgi_data) {
+        http_begin_response(request, 200, "text/plain");
+        http_end_header(request);
+
+        request->cgi_data = malloc(1);
+
+        return HTTP_CGI_MORE;
+    } else {
+        const char response[] = "This is a response from \'cgi_stream\'\r\n";
+
+        http_write_string(request, response);
+        http_end_body(request);
+
+        free(request->cgi_data);
+
+        return HTTP_CGI_DONE;
+    }
+}
+
+static const char *WWW_DIR = "/www";
+static const char *GZIP_EXT = ".gz";
+
+struct http_spiffs_response
+{
+    int fd;
+    char buf[128];
+};
+
+struct http_mime_map
+{
+    const char *ext;
+    const char *type;
+};
+
+const struct http_mime_map mime_tab[] = {
+    {"html", "text/html"},
+    {"css", "text/css"},
+    {"js", "text/javascript"},
+    {"png", "image/png"},
+    {"json", "application/json"},
+    {NULL, "text/plain"},
+};
+
+const char *http_get_mime_type(const char *path)
+{
+    const char *ext = strrchr(path, '.');
+
+    const struct http_mime_map *p;
+
+    if(ext) {
+        ext++;
+    }
+
+    for(p = mime_tab; p->ext; p++) {
+        if(!strcmp(ext, p->ext)) {
+            break;
+        }
+    }
+    return p->type;
+}
+
+enum http_cgi_state cgi_spiffs(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    if(!request->cgi_data) {
+        const char *base_filename;
+        const char *www_prefix;
+
+        LOG("path: \"%s\"", request->path);
+
+        if(request->cgi_arg) {
+            base_filename = request->cgi_arg;
+            www_prefix = "";
+        } else {
+            base_filename = request->path;
+            www_prefix = WWW_DIR;
+        }
+
+        if(base_filename[strlen(base_filename)-1] == '/') {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        char *filename;
+
+        filename = malloc(strlen(WWW_DIR) + strlen(base_filename) + strlen(GZIP_EXT) + 1);
+
+        if(!filename) {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        strcpy(filename, www_prefix);
+        strcat(filename, base_filename);
+
+        LOG("Opening file \"%s\"", filename);
+        int fd = open(filename, O_RDONLY);
+
+        const char *mime_type = http_get_mime_type(filename);
+
+        free(filename);
+
+        if(fd < 0) {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        request->cgi_data = malloc(sizeof(struct http_spiffs_response));
+
+        if(!request->cgi_data) {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        struct http_spiffs_response *resp = request->cgi_data;
+
+        resp->fd = fd;
+
+        http_begin_response(request, 200, mime_type);
+        http_write_header(request, "Cache-Control", "max-age=3600, must-revalidate");
+        http_end_header(request);
+
+        return HTTP_CGI_MORE;
+    } else {
+        struct http_spiffs_response *resp = request->cgi_data;
+
+        int n = read(resp->fd, resp->buf, sizeof(resp->buf));
+
+        if(n > 0) {
+            http_write_bytes(request, resp->buf, n);
+        }
+
+        if(n < sizeof(resp->buf)) {
+            http_end_body(request);
+
+            close(resp->fd);
+            free(request->cgi_data);
+
+            return HTTP_CGI_DONE;
+        } else {
+            return HTTP_CGI_MORE;
+        }
+    }
+}
+
+static struct http_url_handler http_url_tab_[] = {
+    {"/simple", cgi_simple, NULL},
+    {"/stream", cgi_stream, NULL},
+    {"/query", cgi_query, NULL},
+    {"/", cgi_spiffs, "/www/index.html"},
+    {"/*", cgi_spiffs, NULL},
+    {NULL, NULL, NULL}
+};
+
+struct http_url_handler *http_url_tab = http_url_tab_;
+
+void http_server_test_task(void *pvParameters)
+{
+    for(;;) {
+        http_server_main(80);
+        LOG("The http server has returned!");
+        vTaskDelayMs(5000);
+    }
+}
+
+
 
 void user_init(void)
 {
@@ -219,9 +455,11 @@ void user_init(void)
     xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
     // xTaskCreate(&http_test_task, "http_test_task", 384, NULL, 6, NULL);
     // xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
-    xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
-    xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
-    xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
+    // xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
+    // xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
+    // xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
+    xTaskCreate(&http_server_test_task, "http_server_test_task", 1024, NULL, 4, NULL);
+
 #endif
 
     // xTaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
