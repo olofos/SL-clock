@@ -30,6 +30,8 @@
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
 
+#define TaskCreate(a,b,c,d,e,f) xTaskCreate(a,(signed char*)(b),c,d,e,f)
+
 struct app_status app_status = {
     .wifi_connected = 0,
     .obtained_time = 0,
@@ -449,18 +451,18 @@ void user_init(void)
 #endif
 
 #ifdef TEST_JOURNEY_TASK
-    xTaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
-    xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
+    TaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
+    TaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
 #else
-    xTaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
-    // xTaskCreate(&http_test_task, "http_test_task", 384, NULL, 6, NULL);
-    // xTaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
-    // xTaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
-    // xTaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
-    // xTaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
-    xTaskCreate(&http_server_test_task, "http_server_test_task", 1024, NULL, 4, NULL);
+    TaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
+    // TaskCreate(&http_test_task, "http_test_task", 384, NULL, 6, NULL);
+    // TaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
+    // TaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
+    // TaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
+    // TaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
+    TaskCreate(&http_server_test_task, "http_server_test_task", 1024, NULL, 4, NULL);
 
 #endif
 
-    // xTaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
+    // TaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
 }
