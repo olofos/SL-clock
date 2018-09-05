@@ -451,11 +451,12 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         const char *site_id = http_get_query_arg(request, "siteId");
 
-        http_begin_response(request, 200, "application/json");
-        http_write_header(request, "Cache-Control", "no-cache");
-        http_end_header(request);
-
         if(!site_id) {
+            LOG("No siteId provided");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
             http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"No siteId given\"}");
             http_end_body(request);
 
@@ -466,6 +467,10 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         if(!path) {
             LOG("malloc failed");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
             http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
             http_end_body(request);
 
@@ -476,6 +481,10 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         if(!req) {
             LOG("malloc failed");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
             http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
             http_end_body(request);
 
@@ -492,6 +501,11 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         if(http_get_request(req) < 0) {
             LOG("http_get_request failed");
+
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
             http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
             http_end_body(request);
 
@@ -499,6 +513,12 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
             free(req);
             return HTTP_CGI_DONE;
         }
+
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_set_content_length(request, req->content_length);
+        http_end_header(request);
+
 
         request->cgi_data = req;
         return HTTP_CGI_MORE;
