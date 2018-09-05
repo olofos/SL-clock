@@ -337,8 +337,6 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         const char *base_filename;
         const char *www_prefix;
 
-        LOG("path: \"%s\"", request->path);
-
         if(request->cgi_arg) {
             base_filename = request->cgi_arg;
             www_prefix = "";
@@ -358,8 +356,34 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         strcpy(filename, www_prefix);
         strcat(filename, base_filename);
 
-        LOG("Opening file \"%s\"", filename);
-        int fd = open(filename, O_RDONLY);
+        int is_gzip = 0;
+        int fd = -1;
+
+        if(request->flags & HTTP_FLAG_ACCEPT_GZIP) {
+            strcat(filename, GZIP_EXT);
+
+            fd = open(filename, O_RDONLY);
+
+            if(fd >= 0) {
+                LOG("Opened file \"%s\"", filename);
+
+                is_gzip = 1;
+            } else {
+                LOG("File \"%s\" not found", filename);
+            }
+
+            filename[strlen(filename) - strlen(GZIP_EXT)] = 0;
+        }
+
+        if(!is_gzip) {
+            fd = open(filename, O_RDONLY);
+
+            if(fd >= 0) {
+                LOG("Opened file \"%s\"", filename);
+            } else {
+                LOG("File \"%s\" not found", filename);
+            }
+        }
 
         if(fd < 0) {
             free(filename);
@@ -383,6 +407,9 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
 
         http_begin_response(request, 200, mime_type);
         http_write_header(request, "Cache-Control", "max-age=3600, must-revalidate");
+        if(is_gzip) {
+            http_write_header(request, "Content-Encoding", "gzip");
+        }
         http_end_header(request);
 
         return HTTP_CGI_MORE;
