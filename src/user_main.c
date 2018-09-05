@@ -390,6 +390,10 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
             return HTTP_CGI_NOT_FOUND;
         }
 
+        struct stat s;
+        fstat(fd, &s);
+        LOG("File size: %d", s.st_size);
+
         const char *mime_type = http_get_mime_type(filename);
 
         free(filename);
@@ -407,6 +411,7 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
 
         http_begin_response(request, 200, mime_type);
         http_write_header(request, "Cache-Control", "max-age=3600, must-revalidate");
+        http_set_content_length(request, s.st_size);
         if(is_gzip) {
             http_write_header(request, "Content-Encoding", "gzip");
         }
