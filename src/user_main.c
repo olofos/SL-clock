@@ -440,10 +440,91 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
     }
 }
 
+enum http_cgi_state cgi_journies_json(struct http_request* request)
+{
+    struct http_request* req = request->cgi_data;
+
+    if(!req) {
+        if(request->method != HTTP_METHOD_GET) {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        const char *site_id = http_get_query_arg(request, "siteId");
+
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_end_header(request);
+
+        if(!site_id) {
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"No siteId given\"}");
+            http_end_body(request);
+
+            return HTTP_CGI_DONE;
+        }
+
+        char *path = malloc(256);
+
+        if(!path) {
+            LOG("malloc failed");
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
+            http_end_body(request);
+
+            return HTTP_CGI_DONE;
+        }
+
+        req = malloc(sizeof(*req));
+
+        if(!req) {
+            LOG("malloc failed");
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
+            http_end_body(request);
+
+            free(path);
+            return HTTP_CGI_DONE;
+        }
+
+        http_request_init(req);
+
+        snprintf(path, 256, "/api2/realtimedeparturesV4.json?key=%s&TimeWindow=60&SiteId=%s", KEY_SL_REALTIME, site_id);
+        req->host = "api.sl.se";
+        req->path = path;
+        req->port = 80;
+
+        if(http_get_request(req) < 0) {
+            LOG("http_get_request failed");
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
+            http_end_body(request);
+
+            free(path);
+            free(req);
+            return HTTP_CGI_DONE;
+        }
+
+        request->cgi_data = req;
+        return HTTP_CGI_MORE;
+    } else {
+
+        char buf[64];
+        int n = http_read(req, buf, sizeof(buf));
+
+        if(n > 0) {
+            http_write_bytes(request, buf, n);
+            return HTTP_CGI_MORE;
+        } else {
+            http_end_body(request);
+            http_close(req);
+            free(req->path);
+            free(req);
+            return HTTP_CGI_DONE;
+        }
+    }
+}
+
 static struct http_url_handler http_url_tab_[] = {
     {"/simple", cgi_simple, NULL},
     {"/stream", cgi_stream, NULL},
     {"/query", cgi_query, NULL},
+    {"/journies.json", cgi_journies_json, NULL},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
