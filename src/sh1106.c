@@ -58,7 +58,9 @@ const uint8_t sh1106_init_seq[] = {
     OLED_CMD_DISPLAY_ON,
 };
 
-uint8_t framebuffer[FB_SIZE];
+static uint8_t the_framebuffer[FB_SIZE];
+uint8_t *framebuffer = the_framebuffer;
+
 #define OLED_START_COL 2
 
 void fb_display(void)
