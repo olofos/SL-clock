@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "wifi-task.h"
+#include "status.h"
 #include "keys.h"
 #include "log.h"
 
@@ -84,6 +85,11 @@ void wifi_ap_connect(const struct wifi_ap *ap)
     wifi_station_connect();
 }
 
+void wifi_ap_disconnect(void)
+{
+    wifi_station_disconnect();
+}
+
 static void wifi_softap_config(void)
 {
     struct softap_config softap_config;
@@ -110,6 +116,25 @@ void wifi_softap_enable(void)
 void wifi_softap_disable(void)
 {
     wifi_set_opmode(STATION_MODE);
+}
+
+volatile static uint8_t wifi_scan_in_progress;
+
+static void wifi_scan_cb(void *arg, STATUS status)
+{
+    for(struct bss_info *bss = arg; bss != NULL; bss = STAILQ_NEXT(bss, next)) {
+        wifi_scan_add((char*)bss->ssid, bss->rssi, bss->authmode);
+    }
+    wifi_scan_in_progress = 0;
+}
+
+void wifi_start_scan(void)
+{
+    if(!wifi_scan_in_progress) {
+        wifi_scan_in_progress = 1;
+        wifi_scan_free_all();
+        wifi_station_scan(NULL, wifi_scan_cb);
+    }
 }
 
 

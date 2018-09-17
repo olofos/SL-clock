@@ -8,6 +8,8 @@
 
 
 struct wifi_ap *wifi_first_ap = 0;
+struct wifi_scan_ap *wifi_first_scan_ap = 0;
+
 
 void wifi_ap_free(struct wifi_ap *ap)
 {
@@ -136,4 +138,35 @@ const char *wifi_ap_password(uint16_t n)
     }
 
     return ap->password;
+}
+
+
+
+void wifi_scan_add(const char *ssid, int8_t rssi, uint8_t authmode)
+{
+    struct wifi_scan_ap *new_ap = malloc(sizeof(struct wifi_scan_ap));
+
+    new_ap->ssid = malloc(strlen(ssid) + 1);
+    strcpy(new_ap->ssid, ssid);
+    new_ap->rssi = rssi;
+    new_ap->authmode = authmode;
+
+    new_ap->next = wifi_first_scan_ap;
+    wifi_first_scan_ap = new_ap;
+}
+
+void wifi_scan_free_all(void)
+{
+    struct wifi_scan_ap *ap = wifi_first_scan_ap;
+
+    while(ap) {
+        struct wifi_scan_ap *next = ap->next;
+
+        free(ap->ssid);
+        free(ap);
+
+        ap = next;
+    }
+
+    wifi_first_scan_ap = 0;
 }

@@ -20,6 +20,10 @@
 #include "config.h"
 #include "display.h"
 #include "display-message.h"
+#include "json.h"
+#include "json-http.h"
+#include "json-util.h"
+
 
 #include "http-sm/http.h"
 
@@ -283,6 +287,216 @@ enum http_cgi_state cgi_stream(struct http_request* request)
     }
 }
 
+static const char *get_status(struct wifi_ap *ap)
+{
+    if(ap != wifi_current_ap) {
+        return "";
+    }
+
+    if(wifi_state == WIFI_STATE_AP_CONNECTED) {
+        return "connected";
+    } else if(wifi_state == WIFI_STATE_AP_CONNECTING) {
+        return "connecting";
+    }
+
+    return "";
+}
+
+enum http_cgi_state cgi_wifi_list(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_end_header(request);
+
+        http_write_string(request, "[");
+
+        struct wifi_ap *ap;
+        for(ap = wifi_first_ap; ap; ap = ap->next) {
+            char buf[64];
+
+            sprintf(buf, "%s{\"ssid\":\"%s\",\"saved\":true,\"status\":\"%s\"}",
+                    ap == wifi_first_ap ? "" : ",",
+                    ap->ssid,
+                    get_status(ap)
+                );
+            http_write_string(request, buf);
+        }
+
+        http_write_string(request, "]");
+
+        http_end_body(request);
+
+        return HTTP_CGI_DONE;
+    } else if(request->method == HTTP_METHOD_POST) {
+        json_stream json;
+        json_open_http(&json, request);
+
+        if(json_expect(&json, JSON_OBJECT)) {
+            if(json_find_name(&json, "ssid")) {
+                if(json_expect(&json, JSON_STRING)) {
+                    const char *s = json_get_string(&json, 0);
+                    char *ssid = 0;
+                    if(s) {
+                        ssid = malloc(strlen(s) + 1);
+                        strcpy(ssid, s);
+                    }
+
+                    if(json_find_name(&json, "password")) {
+                        if(json_expect(&json, JSON_STRING)) {
+                            const char *p = json_get_string(&json, 0);
+                            char *password = 0;
+                            if(p) {
+                                password = malloc(strlen(p) + 1);
+                                strcpy(password, p);
+                            }
+
+
+                            json_skip_until_end_of_object(&json);
+
+                            if (json_get_error(&json)) {
+                                LOG("JSON error %s", json_get_error(&json));
+                            }
+
+                            wifi_ap_add(ssid, password);
+
+                            LOG("Added %s", ssid);
+
+                            free(password);
+                            free(ssid);
+
+                            http_begin_response(request, 200, "text/plain");
+                            http_end_header(request);
+                            http_write_string(request, "OK");
+                            http_end_body(request);
+
+                            return HTTP_CGI_DONE;
+                        }
+                    }
+                    free(ssid);
+                }
+            }
+        }
+
+        http_begin_response(request, HTTP_STATUS_BAD_REQUEST, "application/json");
+        http_end_header(request);
+        http_write_string(request, "{\"message\" : \"Bad request\"}");
+        http_end_body(request);
+
+        return HTTP_CGI_DONE;
+    } else if(request->method == HTTP_METHOD_DELETE) {
+        json_stream json;
+        json_open_http(&json, request);
+
+        if(json_expect(&json, JSON_OBJECT)) {
+            if(json_find_name(&json, "ssid")) {
+                if(json_expect(&json, JSON_STRING)) {
+                    const char *s = json_get_string(&json, 0);
+                    char *ssid = 0;
+                    if(s) {
+                        ssid = malloc(strlen(s) + 1);
+                        strcpy(ssid, s);
+                    }
+                    json_skip_until_end_of_object(&json);
+
+                    if (json_get_error(&json)) {
+                        LOG("JSON error %s", json_get_error(&json));
+                    }
+
+                    if(wifi_current_ap && (strcmp(wifi_current_ap->ssid, ssid) == 0)) {
+                        if(wifi_state == WIFI_STATE_AP_CONNECTED) {
+                            wifi_ap_disconnect();
+                            }
+                    }
+
+                    wifi_ap_remove(ssid);
+
+                    LOG("Removed %s", ssid);
+
+                    free(ssid);
+
+                    http_begin_response(request, HTTP_STATUS_NO_CONTENT, NULL);
+                    http_set_content_length(request, 0);
+                    http_end_header(request);
+                    http_end_body(request);
+
+                    return HTTP_CGI_DONE;
+                }
+            }
+        }
+
+        http_begin_response(request, HTTP_STATUS_BAD_REQUEST, "application/json");
+        http_end_header(request);
+        http_write_string(request, "{\"message\" : \"Bad request\"}");
+        http_end_body(request);
+
+        return HTTP_CGI_DONE;
+    } else {
+        return HTTP_CGI_NOT_FOUND;
+    }
+}
+
+static const char* format_authmode(uint8_t authmode)
+{
+    switch(authmode) {
+    case AUTH_OPEN:
+        return "null";
+    case AUTH_WEP:
+        return "\"WEP\"";
+    case AUTH_WPA_PSK:
+        return "\"WPA PSK\"";
+    case AUTH_WPA2_PSK:
+        return "\"WPA2 PSK\"";
+    case AUTH_WPA_WPA2_PSK:
+        return "\"WPA WPA2 PSK\"";
+    default:
+        LOG("Unkown authmode: %02x", authmode);
+        return "?";
+    }
+}
+
+enum http_cgi_state cgi_wifi_scan(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    if(!request->cgi_data) {
+        wifi_start_scan();
+
+        request->cgi_data = malloc(1);
+        return HTTP_CGI_MORE;
+    } else {
+        if(!wifi_first_scan_ap) {
+            return HTTP_CGI_MORE;
+        }
+
+        http_begin_response(request, 200, "application/json");
+        http_end_header(request);
+
+        http_write_string(request, "[");
+
+        for(struct wifi_scan_ap *ap = wifi_first_scan_ap; ap; ap = ap->next) {
+            char buf[64];
+
+            sprintf(buf, "%s{\"ssid\":\"%s\",\"rssi\":%d, \"encryption\":%s}",
+                    ap == wifi_first_scan_ap ? "" : ",",
+                    ap->ssid,
+                    ap->rssi,
+                    format_authmode(ap->authmode)
+                );
+            http_write_string(request, buf);
+        }
+
+        http_write_string(request, "]");
+
+        http_end_body(request);
+
+        free(request->cgi_data);
+
+        return HTTP_CGI_DONE;
+    }
+}
+
 static const char *WWW_DIR = "/www";
 static const char *GZIP_EXT = ".gz";
 
@@ -516,7 +730,7 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         http_begin_response(request, 200, "application/json");
         http_write_header(request, "Cache-Control", "no-cache");
-        http_set_content_length(request, req->content_length);
+        http_set_content_length(request, req->read_content_length);
         http_end_header(request);
 
 
@@ -541,6 +755,8 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 }
 
 static struct http_url_handler http_url_tab_[] = {
+    {"/api/wifi-scan.json", cgi_wifi_scan, NULL},
+    {"/api/wifi-list.json", cgi_wifi_list, NULL},
     {"/simple", cgi_simple, NULL},
     {"/stream", cgi_stream, NULL},
     {"/query", cgi_query, NULL},

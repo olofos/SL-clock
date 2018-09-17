@@ -30,6 +30,7 @@ void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 void setUp(void)
 {
     wifi_first_ap = 0;
+    wifi_first_scan_ap = 0;
 }
 
 void tearDown(void)
@@ -41,6 +42,8 @@ void tearDown(void)
         wifi_ap_free(ap);
         ap = next;
     }
+
+    wifi_scan_free_all();
 }
 
 //////// Test //////////////////////////////////////////////////////////////////
@@ -349,6 +352,39 @@ static void test__wifi_ap_remove__should__remove_the_third_entry_3(void)
 }
 
 
+static void test__wifi_scan_add__should_add_when_empty(void)
+{
+    wifi_scan_add("SSID", -10, 0);
+
+    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap);
+    TEST_ASSERT_NULL(wifi_first_scan_ap->next);
+
+    TEST_ASSERT_EQUAL_STRING("SSID", wifi_first_scan_ap->ssid);
+    TEST_ASSERT_EQUAL_INT8(-10, wifi_first_scan_ap->rssi);
+    TEST_ASSERT_EQUAL_UINT8(0, wifi_first_scan_ap->authmode);
+}
+
+static void test__wifi_scan_add__should_add_when_not_empty(void)
+{
+    wifi_scan_add("SSID0", 0, 0);
+    wifi_scan_add("SSID1", 1, 1);
+
+    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap);
+    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap->next);
+    TEST_ASSERT_NULL(wifi_first_scan_ap->next->next);
+
+    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_scan_ap->ssid);
+    TEST_ASSERT_EQUAL_STRING("SSID0", wifi_first_scan_ap->next->ssid);
+
+
+    TEST_ASSERT_EQUAL_INT8(1, wifi_first_scan_ap->rssi);
+    TEST_ASSERT_EQUAL_INT8(0, wifi_first_scan_ap->next->rssi);
+
+    TEST_ASSERT_EQUAL_UINT8(1, wifi_first_scan_ap->authmode);
+    TEST_ASSERT_EQUAL_UINT8(0, wifi_first_scan_ap->next->authmode);
+}
+
+
 //////// Main //////////////////////////////////////////////////////////////////
 
 int main(void)
@@ -398,6 +434,10 @@ int main(void)
     RUN_TEST(test__wifi_ap_remove__should__remove_the_second_entry_3);
 
     RUN_TEST(test__wifi_ap_remove__should__remove_the_third_entry_3);
+
+
+    RUN_TEST(test__wifi_scan_add__should_add_when_empty);
+    RUN_TEST(test__wifi_scan_add__should_add_when_not_empty);
 
     return UNITY_END();
 }

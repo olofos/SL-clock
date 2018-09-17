@@ -59,7 +59,20 @@ struct wifi_ap
     struct wifi_ap *next;
 };
 
+struct wifi_scan_ap
+{
+    char *ssid;
+    int8_t rssi;
+    uint8_t authmode;
+    struct wifi_scan_ap *next;
+};
+
 extern struct wifi_ap *wifi_first_ap;
+extern struct wifi_scan_ap *wifi_first_scan_ap;
+extern enum wifi_state wifi_state;
+extern struct wifi_ap *wifi_current_ap;
+
+
 
 void wifi_task(void *pvParameters);
 
@@ -74,6 +87,13 @@ const char *wifi_ap_password(uint16_t n);
 void wifi_ap_free(struct wifi_ap *ap);
 
 void wifi_ap_connect(const struct wifi_ap *ap);
+void wifi_ap_disconnect(void);
+
+void wifi_scan_add(const char *ssid, int8_t rssi, uint8_t authmode);
+void wifi_scan_free_all(void);
+
+void wifi_start_scan(void);
+
 
 void wifi_state_machine_init(void);
 void wifi_handle_event(enum wifi_event event);
