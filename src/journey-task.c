@@ -62,17 +62,6 @@ static int update_journey(struct journey *journey)
 
     construct_http_request(journey, &request, buf, sizeof(buf));
 
-    // if(http_open(&request) < 0)
-    // {
-    //     LOG("http_open failed");
-    //     return -1;
-    // }
-
-    // if(http_get(&request) < 0) {
-    //     LOG("http_get failed");
-    //     return -1;
-    // }
-
     if(http_get_request(&request) < 0) {
         LOG("http_get_request failed");
         return -1;
@@ -97,10 +86,6 @@ void journey_task(void *pvParameters)
 {
     LOG("Journey task starting");
 
-    // vTaskDelayMs(10 * 1000);
-
-    // LOG("Journey task starting for real");
-
     while(!(app_status.wifi_connected && app_status.obtained_time && app_status.obtained_tz))
     {
         vTaskDelayMs(100);
@@ -124,7 +109,6 @@ void journey_task(void *pvParameters)
 
             if(!journey->line[0])
             {
-                // LOG("Journey %d: empty line", j);
                 continue;
             }
 
@@ -148,43 +132,35 @@ void journey_task(void *pvParameters)
             } else {
                 LOG("Updating journey %d", j);
 
-                // if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
+                int ret = update_journey(journey);
+
+
+                if(ret < 0)
                 {
-                //     LOG("Took HTTP mutex");
-                    int ret = update_journey(journey);
-                //     LOG("Give back HTTP mutex");
-                //     xSemaphoreGive(http_mutex);
+                    journey->next_update = now + 15;
+                } else {
+                    journey->next_update = now + 30 * 60;
 
-
-                    if(ret < 0)
+                    LOG("Journey from with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
+                    for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
                     {
-                        journey->next_update = now + 15;
-                    } else {
-                        journey->next_update = now + 30 * 60;
+                        char buf[32];
+                        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[i]));
 
-                        LOG("Journey from with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
-                        for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
-                        {
-                            char buf[32];
-                            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[i]));
-
-                            LOG("Depature %d at %s", i, buf);
-                        }
-
-                        printf("\n");
-
-                        LOG("xPortGetFreeHeapSize: %d", xPortGetFreeHeapSize());
-                        LOG("uxTaskGetStackHighWaterMark: %u", (unsigned)uxTaskGetStackHighWaterMark(0));
+                        LOG("Depature %d at %s", i, buf);
                     }
 
-                    char buf[32];
-                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->next_update));
-
-                    LOG("Next update at %s", buf);
                     printf("\n");
-                } // else {
-                //     LOG("Could not take HTTP semaphore");
-                // }
+
+                    LOG("xPortGetFreeHeapSize: %d", xPortGetFreeHeapSize());
+                    LOG("uxTaskGetStackHighWaterMark: %u", (unsigned)uxTaskGetStackHighWaterMark(0));
+                }
+
+                char buf[32];
+                strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->next_update));
+
+                LOG("Next update at %s", buf);
+                printf("\n");
             }
         }
     }
