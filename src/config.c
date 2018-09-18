@@ -72,7 +72,7 @@ static void load_wifi(json_stream *json)
         pass[0] = 0;
 
         int n;
-        while((n = json_find_names(json, (const char*[]) { "SSID", "PASS" }, 2)) >= 0) {
+        while((n = json_find_names(json, (const char*[]) { "ssid", "password" }, 2)) >= 0) {
             json_expect(json, JSON_STRING);
             switch(n) {
             case 0:
@@ -168,7 +168,7 @@ static void save_wifi(FILE *f)
     fprintf(f, "[");
 
     while(ap) {
-        fprintf(f, "{\"SSID\":\"%s\",\"PASS\":\"%s\"}", ap->ssid, ap->password);
+        fprintf(f, "{\"ssid\":\"%s\",\"password\":\"%s\"}", ap->ssid, ap->password);
         if(ap->next) {
             fprintf(f, ", ");
         }
