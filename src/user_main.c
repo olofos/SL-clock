@@ -517,6 +517,7 @@ const struct http_mime_map mime_tab[] = {
     {"css", "text/css"},
     {"js", "text/javascript"},
     {"png", "image/png"},
+    {"svg", "image/svg+xml"},
     {"json", "application/json"},
     {NULL, "text/plain"},
 };
