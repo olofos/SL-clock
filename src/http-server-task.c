@@ -470,7 +470,15 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
     }
 }
 
-enum http_cgi_state cgi_journies_json(struct http_request* request)
+struct cgi_forward_data {
+    char *host;
+    char *path;
+    uint16_t port;
+
+    char *query;
+};
+
+enum http_cgi_state cgi_forward(struct http_request* request)
 {
     struct http_request* req = request->cgi_data;
 
@@ -479,29 +487,39 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
             return HTTP_CGI_NOT_FOUND;
         }
 
-        const char *site_id = http_get_query_arg(request, "siteId");
+        const struct cgi_forward_data *data = request->cgi_arg;
 
-        if(!site_id) {
-            LOG("No siteId provided");
-            http_begin_response(request, 200, "application/json");
+        const char *query_data = http_get_query_arg(request, data->query);
+
+        if(!query_data) {
+            LOG("No query provided");
+
+            const char *reply = "{\"StatusCode\":-1,\"Message\":\"No query given\"}";
+
+            http_begin_response(request, 400, "application/json");
             http_write_header(request, "Cache-Control", "no-cache");
+            http_set_content_length(request, strlen(reply));
             http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"No siteId given\"}");
+            http_write_string(request, reply);
             http_end_body(request);
 
             return HTTP_CGI_DONE;
         }
 
-        char *path = malloc(256);
+        int path_len = strlen(data->path) + 1 + strlen(data->query) + 1 + strlen(query_data) + 1;
+
+        char *path = malloc(path_len);
 
         if(!path) {
             LOG("malloc failed");
-            http_begin_response(request, 200, "application/json");
+
+            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}";
+
+            http_begin_response(request, 500, "application/json");
             http_write_header(request, "Cache-Control", "no-cache");
             http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
+            http_set_content_length(request, strlen(reply));
+            http_write_string(request, reply);
             http_end_body(request);
 
             return HTTP_CGI_DONE;
@@ -511,11 +529,14 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         if(!req) {
             LOG("malloc failed");
-            http_begin_response(request, 200, "application/json");
+
+            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}";
+
+            http_begin_response(request, 500, "application/json");
             http_write_header(request, "Cache-Control", "no-cache");
             http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
+            http_set_content_length(request, strlen(reply));
+            http_write_string(request, reply);
             http_end_body(request);
 
             free(path);
@@ -524,7 +545,12 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
 
         http_request_init(req);
 
-        snprintf(path, 256, "/api2/realtimedeparturesV4.json?key=%s&TimeWindow=60&SiteId=%s", KEY_SL_REALTIME, site_id);
+        strcpy(path, data->path);
+        strcat(path, "&");
+        strcat(path, data->query);
+        strcat(path, "=");
+        strcat(path, query_data);
+
         req->host = "api.sl.se";
         req->path = path;
         req->port = 80;
@@ -532,11 +558,13 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
         if(http_get_request(req) < 0) {
             LOG("http_get_request failed");
 
-            http_begin_response(request, 200, "application/json");
+            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Request failed\"}";
+
+            http_begin_response(request, 500, "application/json");
             http_write_header(request, "Cache-Control", "no-cache");
             http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
+            http_set_content_length(request, strlen(reply));
+            http_write_string(request, reply);
             http_end_body(request);
 
             free(path);
@@ -544,7 +572,7 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
             return HTTP_CGI_DONE;
         }
 
-        http_begin_response(request, 200, "application/json");
+        http_begin_response(request, req->status, req->content_type);
         http_write_header(request, "Cache-Control", "no-cache");
         http_set_content_length(request, req->read_content_length);
         http_end_header(request);
@@ -570,116 +598,33 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
     }
 }
 
-enum http_cgi_state cgi_places_json(struct http_request* request)
-{
-    struct http_request* req = request->cgi_data;
+struct cgi_forward_data journies_forward_data = {
+    .host = "api.sl.se",
+    .path = "/api2/realtimedeparturesV4.json?key=" KEY_SL_REALTIME "&TimeWindow=60",
+    .port = 80,
+    .query = "siteId",
+};
 
-    if(!req) {
-        if(request->method != HTTP_METHOD_GET) {
-            return HTTP_CGI_NOT_FOUND;
-        }
+struct cgi_forward_data places_forward_data = {
+    .host = "api.sl.se",
+    .path = "/api2/typeahead.json?key=" KEY_SL_PLACES,
+    .port = 80,
+    .query = "SearchString",
+};
 
-        const char *search_string = http_get_query_arg(request, "SearchString");
-
-        if(!search_string) {
-            LOG("No siteId provided");
-            http_begin_response(request, 200, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"No siteId given\"}");
-            http_end_body(request);
-
-            return HTTP_CGI_DONE;
-        }
-
-        char *path = malloc(256);
-
-        if(!path) {
-            LOG("malloc failed");
-            http_begin_response(request, 200, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
-            http_end_body(request);
-
-            return HTTP_CGI_DONE;
-        }
-
-        req = malloc(sizeof(*req));
-
-        if(!req) {
-            LOG("malloc failed");
-            http_begin_response(request, 200, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
-            http_end_body(request);
-
-            free(path);
-            return HTTP_CGI_DONE;
-        }
-
-        http_request_init(req);
-
-        snprintf(path, 256, "/api2/typeahead.json?key=%s&SearchString=%s", KEY_SL_PLACES, search_string);
-
-        req->host = "api.sl.se";
-        req->path = path;
-        req->port = 80;
-
-        if(http_get_request(req) < 0) {
-            LOG("http_get_request failed");
-
-            http_begin_response(request, 200, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-
-            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
-            http_end_body(request);
-
-            free(path);
-            free(req);
-            return HTTP_CGI_DONE;
-        }
-
-        http_begin_response(request, 200, "application/json");
-        http_write_header(request, "Cache-Control", "no-cache");
-        http_set_content_length(request, req->read_content_length);
-        http_end_header(request);
-
-        request->cgi_data = req;
-        return HTTP_CGI_MORE;
-    } else {
-
-        char buf[64];
-        int n = http_read(req, buf, sizeof(buf));
-
-        if(n > 0) {
-            http_write_bytes(request, buf, n);
-            return HTTP_CGI_MORE;
-        } else {
-            http_end_body(request);
-            http_close(req);
-            // free(req->path);
-            free(req);
-            return HTTP_CGI_DONE;
-        }
-    }
-}
 
 static struct http_url_handler http_url_tab_[] = {
     {"/api/wifi-scan.json", cgi_wifi_scan, NULL},
     {"/api/wifi-list.json", cgi_wifi_list, NULL},
     {"/api/journies-config.json", cgi_journey_config, NULL},
-    {"/api/places.json", cgi_places_json, NULL},
-    {"/api/journies.json", cgi_journies_json, NULL},
+    {"/api/places.json", cgi_forward, &places_forward_data},
+    {"/api/journies.json", cgi_forward, &journies_forward_data},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
 };
+
+
 
 struct http_url_handler *http_url_tab = http_url_tab_;
 
