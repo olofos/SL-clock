@@ -486,9 +486,9 @@ enum http_cgi_state cgi_forward(struct http_request* request)
 
         const struct cgi_forward_data *data = request->cgi_arg;
 
-        const char *query_data = http_get_query_arg(request, data->query);
+        const char *query_data_raw = http_get_query_arg(request, data->query);
 
-        if(!query_data) {
+        if(!query_data_raw) {
             LOG("No query provided");
 
             write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"No query given\"}");
@@ -496,8 +496,20 @@ enum http_cgi_state cgi_forward(struct http_request* request)
             return HTTP_CGI_DONE;
         }
 
-        int path_len = strlen(data->path) + 1 + strlen(data->query) + 1 + strlen(query_data) + 1;
+        int query_data_len = http_urlencode(0, query_data_raw, 0);
+        char *query_data = malloc(query_data_len + 1);
 
+        if(!query_data) {
+            LOG("malloc failed");
+
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating query\"}");
+
+            return HTTP_CGI_DONE;
+        }
+
+        http_urlencode(query_data, query_data_raw, query_data_len + 1);
+
+        int path_len = strlen(data->path) + 1 + strlen(data->query) + 1 + strlen(query_data) + 1;
         char *path = malloc(path_len);
 
         if(!path) {
@@ -505,6 +517,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
 
             write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
 
+            free(query_data);
             return HTTP_CGI_DONE;
         }
 
@@ -515,6 +528,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
 
             write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
 
+            free(query_data);
             free(path);
             return HTTP_CGI_DONE;
         }
@@ -526,6 +540,8 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         strcat(path, data->query);
         strcat(path, "=");
         strcat(path, query_data);
+
+        free(query_data);
 
         req->host = "api.sl.se";
         req->path = path;
