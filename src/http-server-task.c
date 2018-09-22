@@ -31,16 +31,25 @@
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
 
 
+static void write_simple_response(struct http_request* request, int status, const char* content_type, const char* reply)
+{
+    http_begin_response(request, status, content_type);
+    http_write_header(request, "Cache-Control", "no-cache");
+    if(reply) {
+        http_set_content_length(request, strlen(reply));
+    } else {
+        http_set_content_length(request, 0);
+    }
+    http_end_header(request);
+    if(reply) {
+        http_write_string(request, reply);
+    }
+    http_end_body(request);
+}
 
 enum http_cgi_state cgi_not_found(struct http_request* request)
 {
-    const char *response = "Not found\r\n";
-
-    http_begin_response(request, 404, "text/plain");
-    http_set_content_length(request, strlen(response));
-    http_end_header(request);
-    http_write_string(request, response);
-    http_end_body(request);
+    write_simple_response(request, 404, "text/plain", "Not found\r\n");
 
     return HTTP_CGI_DONE;
 }
@@ -122,10 +131,7 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                             free(password);
                             free(ssid);
 
-                            http_begin_response(request, 200, "text/plain");
-                            http_end_header(request);
-                            http_write_string(request, "OK");
-                            http_end_body(request);
+                            write_simple_response(request, 204, NULL, NULL);
 
                             return HTTP_CGI_DONE;
                         }
@@ -135,10 +141,7 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
             }
         }
 
-        http_begin_response(request, HTTP_STATUS_BAD_REQUEST, "application/json");
-        http_end_header(request);
-        http_write_string(request, "{\"message\" : \"Bad request\"}");
-        http_end_body(request);
+        write_simple_response(request, 400, "application/json", "{\"message\" : \"Bad request\"}");
 
         return HTTP_CGI_DONE;
     } else if(request->method == HTTP_METHOD_DELETE) {
@@ -172,20 +175,14 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
 
                     free(ssid);
 
-                    http_begin_response(request, HTTP_STATUS_NO_CONTENT, NULL);
-                    http_set_content_length(request, 0);
-                    http_end_header(request);
-                    http_end_body(request);
+                    write_simple_response(request, 204, NULL, NULL);
 
                     return HTTP_CGI_DONE;
                 }
             }
         }
 
-        http_begin_response(request, HTTP_STATUS_BAD_REQUEST, "application/json");
-        http_end_header(request);
-        http_write_string(request, "{\"message\" : \"Bad request\"}");
-        http_end_body(request);
+        write_simple_response(request, 400, "application/json", "{\"message\" : \"Bad request\"}");
 
         return HTTP_CGI_DONE;
     } else {
@@ -494,14 +491,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         if(!query_data) {
             LOG("No query provided");
 
-            const char *reply = "{\"StatusCode\":-1,\"Message\":\"No query given\"}";
-
-            http_begin_response(request, 400, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_set_content_length(request, strlen(reply));
-            http_end_header(request);
-            http_write_string(request, reply);
-            http_end_body(request);
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"No query given\"}");
 
             return HTTP_CGI_DONE;
         }
@@ -513,14 +503,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         if(!path) {
             LOG("malloc failed");
 
-            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}";
-
-            http_begin_response(request, 500, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-            http_set_content_length(request, strlen(reply));
-            http_write_string(request, reply);
-            http_end_body(request);
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
 
             return HTTP_CGI_DONE;
         }
@@ -530,14 +513,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         if(!req) {
             LOG("malloc failed");
 
-            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}";
-
-            http_begin_response(request, 500, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-            http_set_content_length(request, strlen(reply));
-            http_write_string(request, reply);
-            http_end_body(request);
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
 
             free(path);
             return HTTP_CGI_DONE;
@@ -558,14 +534,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         if(http_get_request(req) < 0) {
             LOG("http_get_request failed");
 
-            const char *reply = "{\"StatusCode\":-1,\"Message\":\"Request failed\"}";
-
-            http_begin_response(request, 500, "application/json");
-            http_write_header(request, "Cache-Control", "no-cache");
-            http_end_header(request);
-            http_set_content_length(request, strlen(reply));
-            http_write_string(request, reply);
-            http_end_body(request);
+            write_simple_response(request, 500, "application/json", "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
 
             free(path);
             free(req);
