@@ -45,83 +45,6 @@ enum http_cgi_state cgi_not_found(struct http_request* request)
     return HTTP_CGI_DONE;
 }
 
-
-enum http_cgi_state cgi_simple(struct http_request* request)
-{
-    if(request->method != HTTP_METHOD_GET) {
-        return HTTP_CGI_NOT_FOUND;
-    }
-
-    const char *response = "This is a response from \'cgi_simple\'\r\n";
-
-    http_begin_response(request, 200, "text/plain");
-    http_set_content_length(request, strlen(response));
-    http_end_header(request);
-
-    http_write_string(request, response);
-
-    http_end_body(request);
-
-    return HTTP_CGI_DONE;
-}
-
-enum http_cgi_state cgi_query(struct http_request* request)
-{
-    if(request->method != HTTP_METHOD_GET) {
-        return HTTP_CGI_NOT_FOUND;
-    }
-
-    http_begin_response(request, 200, "text/plain");
-    http_end_header(request);
-
-    http_write_string(request, "This is a response from \'cgi_query\'\r\n");
-    http_write_string(request, "The parameters were:\r\n");
-
-    const char *sa = http_get_query_arg(request, "a");
-    const char *sb = http_get_query_arg(request, "b");
-
-    if(sa) {
-        http_write_string(request, "a = ");
-        http_write_string(request, sa);
-        http_write_string(request, "\r\n");
-    }
-
-    if(sb) {
-        http_write_string(request, "b = ");
-        http_write_string(request, sb);
-        http_write_string(request, "\r\n");
-    }
-
-    http_end_body(request);
-
-    return HTTP_CGI_DONE;
-}
-
-enum http_cgi_state cgi_stream(struct http_request* request)
-{
-    if(request->method != HTTP_METHOD_GET) {
-        return HTTP_CGI_NOT_FOUND;
-    }
-
-    if(!request->cgi_data) {
-        http_begin_response(request, 200, "text/plain");
-        http_end_header(request);
-
-        request->cgi_data = malloc(1);
-
-        return HTTP_CGI_MORE;
-    } else {
-        const char response[] = "This is a response from \'cgi_stream\'\r\n";
-
-        http_write_string(request, response);
-        http_end_body(request);
-
-        free(request->cgi_data);
-
-        return HTTP_CGI_DONE;
-    }
-}
-
 static const char *get_status(struct wifi_ap *ap)
 {
     if(ap != wifi_current_ap) {
@@ -753,9 +676,6 @@ static struct http_url_handler http_url_tab_[] = {
     {"/api/journies-config.json", cgi_journey_config, NULL},
     {"/api/places.json", cgi_places_json, NULL},
     {"/api/journies.json", cgi_journies_json, NULL},
-    {"/simple", cgi_simple, NULL},
-    {"/stream", cgi_stream, NULL},
-    {"/query", cgi_query, NULL},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
