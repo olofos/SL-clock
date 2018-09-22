@@ -462,15 +462,15 @@ enum http_cgi_state cgi_wifi_scan(struct http_request* request)
     if(!request->cgi_data) {
         wifi_start_scan();
 
+        http_begin_response(request, 200, "application/json");
+        http_end_header(request);
+
         request->cgi_data = malloc(1);
         return HTTP_CGI_MORE;
     } else {
         if(!wifi_first_scan_ap) {
             return HTTP_CGI_MORE;
         }
-
-        http_begin_response(request, 200, "application/json");
-        http_end_header(request);
 
         http_write_string(request, "[");
 
