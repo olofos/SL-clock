@@ -496,6 +496,63 @@ enum http_cgi_state cgi_wifi_scan(struct http_request* request)
     }
 }
 
+enum http_cgi_state cgi_journey_config(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_end_header(request);
+
+        http_write_string(request, "[");
+
+        char buf[16];
+
+        for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
+        {
+            if(strlen(journies[i].line) > 0)
+            {
+                if(i > 0)
+                {
+                    http_write_string(request, ",");
+                }
+                http_write_string(request, "{");
+                http_write_string(request, "\"line\":\"");
+                http_write_string(request, journies[i].line);
+                http_write_string(request, "\",");
+
+                http_write_string(request, "\"stop\":\"");
+                http_write_string(request, journies[i].stop);
+                http_write_string(request, "\",");
+
+                http_write_string(request, "\"destination\":\"");
+                http_write_string(request, journies[i].destination);
+                http_write_string(request, "\",");
+
+                sprintf(buf, "%d,",journies[i].site_id);
+                http_write_string(request, "\"site_id\":");
+                http_write_string(request, buf);
+
+                sprintf(buf, "%d,",journies[i].mode);
+                http_write_string(request, "\"mode\":");
+                http_write_string(request, buf);
+
+                sprintf(buf, "%d",journies[i].direction);
+                http_write_string(request, "\"direction\":");
+                http_write_string(request, buf);
+
+                http_write_string(request, "}");
+            }
+        }
+        http_write_string(request, "]");
+
+        http_end_body(request);
+
+        return HTTP_CGI_DONE;
+    } else {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+}
+
 static const char *WWW_DIR = "/www";
 static const char *GZIP_EXT = ".gz";
 
@@ -754,13 +811,115 @@ enum http_cgi_state cgi_journies_json(struct http_request* request)
     }
 }
 
+enum http_cgi_state cgi_places_json(struct http_request* request)
+{
+    struct http_request* req = request->cgi_data;
+
+    if(!req) {
+        if(request->method != HTTP_METHOD_GET) {
+            return HTTP_CGI_NOT_FOUND;
+        }
+
+        const char *search_string = http_get_query_arg(request, "SearchString");
+
+        if(!search_string) {
+            LOG("No siteId provided");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"No siteId given\"}");
+            http_end_body(request);
+
+            return HTTP_CGI_DONE;
+        }
+
+        char *path = malloc(256);
+
+        if(!path) {
+            LOG("malloc failed");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
+            http_end_body(request);
+
+            return HTTP_CGI_DONE;
+        }
+
+        req = malloc(sizeof(*req));
+
+        if(!req) {
+            LOG("malloc failed");
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
+            http_end_body(request);
+
+            free(path);
+            return HTTP_CGI_DONE;
+        }
+
+        http_request_init(req);
+
+        snprintf(path, 256, "/api2/typeahead.json?key=%s&SearchString=%s", KEY_SL_PLACES, search_string);
+
+        req->host = "api.sl.se";
+        req->path = path;
+        req->port = 80;
+
+        if(http_get_request(req) < 0) {
+            LOG("http_get_request failed");
+
+            http_begin_response(request, 200, "application/json");
+            http_write_header(request, "Cache-Control", "no-cache");
+            http_end_header(request);
+
+            http_write_string(request, "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
+            http_end_body(request);
+
+            free(path);
+            free(req);
+            return HTTP_CGI_DONE;
+        }
+
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_set_content_length(request, req->read_content_length);
+        http_end_header(request);
+
+        request->cgi_data = req;
+        return HTTP_CGI_MORE;
+    } else {
+
+        char buf[64];
+        int n = http_read(req, buf, sizeof(buf));
+
+        if(n > 0) {
+            http_write_bytes(request, buf, n);
+            return HTTP_CGI_MORE;
+        } else {
+            http_end_body(request);
+            http_close(req);
+            // free(req->path);
+            free(req);
+            return HTTP_CGI_DONE;
+        }
+    }
+}
+
 static struct http_url_handler http_url_tab_[] = {
     {"/api/wifi-scan.json", cgi_wifi_scan, NULL},
     {"/api/wifi-list.json", cgi_wifi_list, NULL},
+    {"/api/journies-config.json", cgi_journey_config, NULL},
+    {"/api/places.json", cgi_places_json, NULL},
+    {"/api/journies.json", cgi_journies_json, NULL},
     {"/simple", cgi_simple, NULL},
     {"/stream", cgi_stream, NULL},
     {"/query", cgi_query, NULL},
-    {"/journies.json", cgi_journies_json, NULL},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
@@ -776,8 +935,6 @@ void http_server_test_task(void *pvParameters)
         vTaskDelayMs(5000);
     }
 }
-
-
 
 void user_init(void)
 {
