@@ -9,7 +9,6 @@
 #include <fcntl.h>
 
 #include "uart.h"
-//#include "http-client.h"
 #include "timezone-db.h"
 #include "journey.h"
 #include "journey-task.h"
