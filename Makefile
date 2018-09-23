@@ -53,7 +53,7 @@ INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
 TST_CC = gcc
-TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR) -g
+TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR) -Ihttp-sm/include -g
 
 TST_RESULTS = $(patsubst $(TSTDIR)/test_%.c,$(RESULTDIR)/test_%.txt,$(SOURCES_TST))
 
