@@ -321,6 +321,17 @@ static void test__http_json_write_bool__writes_comma_to_output_in_array(void)
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
+static void test__http_json_begin_object__writes_comma_to_output_in_array_when_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_begin_object(&json, NULL);
+    http_json_end_object(&json);
+    http_json_begin_object(&json, NULL);
+
+    TEST_ASSERT_EQUAL_STRING("[{},{", output_string);
+}
+
+
 
 //////// Main //////////////////////////////////////////////////////////////////
 
@@ -371,6 +382,8 @@ int main(void)
     RUN_TEST(test__http_json_write_string__writes_comma_to_output_in_array);
     RUN_TEST(test__http_json_write_int__writes_comma_to_output_in_array);
     RUN_TEST(test__http_json_write_bool__writes_comma_to_output_in_array);
+
+    RUN_TEST(test__http_json_begin_object__writes_comma_to_output_in_array_when_null);
 
     return UNITY_END();
 }

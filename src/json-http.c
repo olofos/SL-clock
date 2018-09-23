@@ -16,18 +16,19 @@ void http_json_init(struct http_json_writer *json, struct http_request *request)
 
 static void maybe_write_comma(struct http_json_writer *json)
 {
-    if(json->stack[json->current-1] & HTTP_JSON_COMMA) {
-        http_write_string(json->request, ",");
-    }
+    if(json->current > 0) {
+        if(json->stack[json->current-1] & HTTP_JSON_COMMA) {
+            http_write_string(json->request, ",");
+        }
 
-    json->stack[json->current-1] |= HTTP_JSON_COMMA;
+        json->stack[json->current-1] |= HTTP_JSON_COMMA;
+    }
 }
 
 void http_json_begin_object(struct http_json_writer *json, const char *name)
 {
+    maybe_write_comma(json);
     if(name) {
-        maybe_write_comma(json);
-
         http_write_string(json->request, "\"");
         http_write_string(json->request, name);
         http_write_string(json->request, "\":{");
