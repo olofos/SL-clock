@@ -675,6 +675,12 @@ static void write_wifi_status(struct http_json_writer* json)
         http_json_end_object(json);
     }
 
+    http_json_begin_array(json, "known-networks");
+    for(const struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
+        http_json_write_string(json, NULL, ap->ssid);
+    }
+    http_json_end_array(json);
+
     http_json_end_object(json);
 }
 
