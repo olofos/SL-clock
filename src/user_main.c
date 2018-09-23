@@ -103,95 +103,25 @@ void spiffs_fs_init(void)
     }
 }
 
+#define MAX_TASKS 6
 
-void tz_test_task(void *pvParameters)
-{
-    for(;;)
-    {
-        LOG("%ld", xTaskGetTickCount());
-        vTaskDelayMs(5000);
-    }
-}
+#define TASK_WIFI 0
+#define TASK_DISPLAY 1
+#define TASK_SNTP 2
+#define TASK_TZDB 3
+#define TASK_JOURNEY 4
+#define TASK_HTTPD 5
 
-void journey_test_task(void *pvParameters)
-{
-    journies[1].line[0] = 0;
-
-    journies[0].mode = TRANSPORT_MODE_SHIP;
-    journies[1].mode = TRANSPORT_MODE_BUS;
-
-    for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
-    {
-        journies[i].departures[0] = 300;
-        journies[i].departures[1] = journies[i].departures[0] + 300;
-    }
-
-    vTaskDelayMs(5000);
-    journies[0].departures[0] += 300;
-    journies[0].departures[1] = journies[0].departures[0] + 300;
-
-
-    for(;;)
-    {
-        for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
-        {
-            if(!(rand() & 0x03))
-            {
-                journies[i].departures[0] += 300;
-                journies[i].departures[1] = journies[i].departures[0] + 300;
-            }
-        }
-
-#ifdef TEST_DISPLAY_MESSAGE
-        static int msg = 0;
-        if(!(rand() & 0x03)) {
-            if(msg) {
-                display_post_message(DISPLAY_MESSAGE_NONE);
-                msg = 0;
-            } else {
-                display_post_message(DISPLAY_MESSAGE_NO_WIFI);
-                msg = 1;
-            }
-        }
-#endif
-
-        vTaskDelayMs(5000);
-    }
-}
-
-void http_test_task(void *pvParameters)
-{
-    for(;;)
-    {
-        while(!app_status.wifi_connected)
-        {
-            LOG("WIFI not ready");
-            vTaskDelayMs(1000);
-        }
-
-        struct http_request request = {
-            .host = "www.google.com",
-            .path = "/",
-            .port = 80,
-        };
-
-        if(http_get_request(&request) > 0) {
-            LOG("http_get_request succeeded with status %d", request.status);
-
-            int c;
-            while((c = http_getc(&request)) > 0) {
-                printf("%c", c);
-            }
-            printf("\r\n");
-        } else {
-            LOG("http_get_request failed");
-        }
-
-        http_close(&request);
-
-        vTaskDelayMs(5000);
-    }
-}
+xTaskHandle task_handle[MAX_TASKS];
+const char *task_names[MAX_TASKS+1] = {
+    [TASK_WIFI] = "wifi",
+    [TASK_DISPLAY] = "display",
+    [TASK_SNTP] = "sntp",
+    [TASK_TZDB] = "tzdb",
+    [TASK_JOURNEY] = "journey",
+    [TASK_HTTPD] = "httpd",
+    NULL
+};
 
 
 void user_init(void)
@@ -214,19 +144,10 @@ void user_init(void)
     http_mutex = xSemaphoreCreateMutex();
 #endif
 
-#ifdef TEST_JOURNEY_TASK
-    TaskCreate(&journey_test_task, "journey_test_task", 1024, NULL, 4, NULL);
-    TaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
-#else
-    TaskCreate(&wifi_task, "wifi_task", 384, NULL, 6, NULL);
-    // TaskCreate(&http_test_task, "http_test_task", 384, NULL, 6, NULL);
-    // TaskCreate(&display_task, "display_task", 384, NULL, 3, NULL);
-    // TaskCreate(&sntp_task, "sntp_task", 384, NULL, 6, NULL);
-    // TaskCreate(&timezone_db_task, "timezone_db_task", 512, NULL, 5, NULL);
-    // TaskCreate(&journey_task, "journey_task", 1024, NULL, 4, NULL);
-    TaskCreate(&http_server_test_task, "http_server_test_task", 1024, NULL, 4, NULL);
-
-#endif
-
-    // TaskCreate(&tz_test_task, "tz_test_task", 384, NULL, 6, NULL);
+    TaskCreate(&wifi_task, task_names[TASK_WIFI], 384, NULL, 6, &task_handle[TASK_WIFI]);
+    TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
+    TaskCreate(&sntp_task, task_names[TASK_SNTP], 384, NULL, 6, &task_handle[TASK_SNTP]);
+    TaskCreate(&timezone_db_task, task_names[TASK_TZDB], 512, NULL, 5, &task_handle[TASK_TZDB]);
+    TaskCreate(&journey_task, task_names[TASK_JOURNEY], 1024, NULL, 4, &task_handle[TASK_JOURNEY]);
+    TaskCreate(&http_server_task, task_names[TASK_HTTPD], 1024, NULL, 4, &task_handle[TASK_HTTPD]);
 }

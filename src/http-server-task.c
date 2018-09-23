@@ -583,10 +583,26 @@ enum http_cgi_state cgi_forward(struct http_request* request)
     }
 }
 
+extern xTaskHandle task_handle[];
+extern const char *task_names[];
+
 static void write_system_status(struct http_json_writer* json)
 {
     http_json_begin_object(json, "system");
-    http_json_write_int(json, "free-memory", xPortGetFreeHeapSize());
+    http_json_write_int(json, "heap", xPortGetFreeHeapSize());
+    http_json_begin_array(json, "tasks");
+
+    for(int i = 0; task_names[i]; i++) {
+        if(task_handle[i]) {
+            http_json_begin_object(json, NULL);
+            http_json_write_string(json, "name", task_names[i]);
+            http_json_write_int(json, "stack", uxTaskGetStackHighWaterMark(task_handle[i]));
+            http_json_end_object(json);
+        }
+    }
+
+    http_json_end_array(json);
+
     http_json_end_object(json);
 }
 
@@ -779,7 +795,7 @@ static struct http_url_handler http_url_tab_[] = {
 
 struct http_url_handler *http_url_tab = http_url_tab_;
 
-void http_server_test_task(void *pvParameters)
+void http_server_task(void *pvParameters)
 {
     for(;;) {
         http_server_main(80);
