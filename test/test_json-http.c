@@ -177,6 +177,15 @@ static void test__http_json_write_string__writes_to_output(void)
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
+static void test__http_json_write_string__writes_empty_string_to_output(void)
+{
+    http_json_begin_object(&json, NULL);
+    http_json_write_string(&json, "a", "");
+
+    TEST_ASSERT_EQUAL_STRING("{\"a\":\"\"", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
 static void test__http_json_write_string__writes_to_output_if_name_is_null(void)
 {
     http_json_begin_array(&json, NULL);
@@ -401,6 +410,7 @@ int main(void)
 
 
     RUN_TEST(test__http_json_write_string__writes_to_output);
+    RUN_TEST(test__http_json_write_string__writes_empty_string_to_output);
     RUN_TEST(test__http_json_write_string__writes_null_to_output);
     RUN_TEST(test__http_json_write_int__writes_to_output);
     RUN_TEST(test__http_json_write_bool__writes_true_to_output);
