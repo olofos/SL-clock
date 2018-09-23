@@ -127,11 +127,11 @@ build_dirs:
 $(RESULTDIR)/%.txt: $(TSTBINDIR)/%
 	@echo Running $<
 	@echo
-	@./$< > $@ || true
+	$(V)./$< > $@ || true
 
 
 $(TSTOBJDIR)/%.o : $(TSTDIR)/%.c
-	@echo CC $@
+	$(V)echo CC $@
 	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
 
 $(TSTOBJDIR)/%.o : $(SRCDIR)/%.c
