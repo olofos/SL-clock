@@ -46,8 +46,6 @@ static void construct_http_request(const struct journey *jour, struct http_reque
              (jour->mode == TRANSPORT_MODE_SHIP) ? str_true : str_false
         );
 
-    LOG("path = %s", buf);
-
     request->host = "api.sl.se";
     request->path = buf;
     request->port = 80;

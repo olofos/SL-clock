@@ -53,8 +53,6 @@ static void construct_http_request(struct http_request *request, char buf[], siz
 {
     snprintf(buf, buf_len, "/v2/get-time-zone?format=json&key=%s&by=zone&zone=%s&fields=countryName,zoneName,abbreviation,gmtOffset,dst,dstStart,dstEnd", KEY_TIMEZONEDB, timezone_name);
 
-    LOG("Path: \"%s\"", buf);
-
     request->host = "api.timezonedb.com";
     request->path = buf;
     request->query = 0;
