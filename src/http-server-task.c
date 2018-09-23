@@ -54,7 +54,7 @@ enum http_cgi_state cgi_not_found(struct http_request* request)
     return HTTP_CGI_DONE;
 }
 
-static const char *get_status_of_ap(struct wifi_ap *ap)
+static const char *get_status_of_ap(const struct wifi_ap *ap)
 {
     if(ap != wifi_current_ap) {
         return "";
@@ -73,23 +73,23 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
 {
     if(request->method == HTTP_METHOD_GET) {
         http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
         http_end_header(request);
 
-        http_write_string(request, "[");
+        struct http_json_writer json;
+        http_json_init(&json, request);
 
-        struct wifi_ap *ap;
-        for(ap = wifi_first_ap; ap; ap = ap->next) {
-            char buf[64];
+        http_json_begin_array(&json, NULL);
 
-            sprintf(buf, "%s{\"ssid\":\"%s\",\"saved\":true,\"status\":\"%s\"}",
-                    ap == wifi_first_ap ? "" : ",",
-                    ap->ssid,
-                    get_status_of_ap(ap)
-                );
-            http_write_string(request, buf);
+        for(const struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
+            http_json_begin_object(&json, NULL);
+            http_json_write_string(&json, "ssid", ap->ssid);
+            http_json_write_bool(&json, "saved", 1);
+            http_json_write_string(&json, "status", get_status_of_ap(ap));
+            http_json_end_object(&json);
         }
 
-        http_write_string(request, "]");
+        http_json_end_array(&json);
 
         http_end_body(request);
 
@@ -194,15 +194,15 @@ static const char* format_authmode(uint8_t authmode)
 {
     switch(authmode) {
     case AUTH_OPEN:
-        return "null";
+        return NULL;
     case AUTH_WEP:
-        return "\"WEP\"";
+        return "WEP";
     case AUTH_WPA_PSK:
-        return "\"WPA PSK\"";
+        return "WPA PSK";
     case AUTH_WPA2_PSK:
-        return "\"WPA2 PSK\"";
+        return "WPA2 PSK";
     case AUTH_WPA_WPA2_PSK:
-        return "\"WPA WPA2 PSK\"";
+        return "WPA WPA2 PSK";
     default:
         LOG("Unkown authmode: %02x", authmode);
         return "?";
@@ -228,21 +228,20 @@ enum http_cgi_state cgi_wifi_scan(struct http_request* request)
             return HTTP_CGI_MORE;
         }
 
-        http_write_string(request, "[");
+        struct http_json_writer json;
+        http_json_init(&json, request);
+
+        http_json_begin_array(&json, NULL);
 
         for(struct wifi_scan_ap *ap = wifi_first_scan_ap; ap; ap = ap->next) {
-            char buf[64];
-
-            sprintf(buf, "%s{\"ssid\":\"%s\",\"rssi\":%d, \"encryption\":%s}",
-                    ap == wifi_first_scan_ap ? "" : ",",
-                    ap->ssid,
-                    ap->rssi,
-                    format_authmode(ap->authmode)
-                );
-            http_write_string(request, buf);
+            http_json_begin_object(&json, NULL);
+            http_json_write_string(&json, "ssid", ap->ssid);
+            http_json_write_int(&json, "rssi", ap->rssi);
+            http_json_write_string(&json, "encryption", format_authmode(ap->authmode));
+            http_json_end_object(&json);
         }
 
-        http_write_string(request, "]");
+        http_json_end_array(&json);
 
         http_end_body(request);
 
@@ -258,48 +257,25 @@ enum http_cgi_state cgi_journey_config(struct http_request* request)
         http_begin_response(request, 200, "application/json");
         http_end_header(request);
 
-        http_write_string(request, "[");
+        struct http_json_writer json;
+        http_json_init(&json, request);
 
-        char buf[16];
+        http_json_begin_array(&json, NULL);
 
-        for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
-        {
-            if(strlen(journies[i].line) > 0)
-            {
-                if(i > 0)
-                {
-                    http_write_string(request, ",");
-                }
-                http_write_string(request, "{");
-                http_write_string(request, "\"line\":\"");
-                http_write_string(request, journies[i].line);
-                http_write_string(request, "\",");
-
-                http_write_string(request, "\"stop\":\"");
-                http_write_string(request, journies[i].stop);
-                http_write_string(request, "\",");
-
-                http_write_string(request, "\"destination\":\"");
-                http_write_string(request, journies[i].destination);
-                http_write_string(request, "\",");
-
-                sprintf(buf, "%d,",journies[i].site_id);
-                http_write_string(request, "\"site_id\":");
-                http_write_string(request, buf);
-
-                sprintf(buf, "%d,",journies[i].mode);
-                http_write_string(request, "\"mode\":");
-                http_write_string(request, buf);
-
-                sprintf(buf, "%d",journies[i].direction);
-                http_write_string(request, "\"direction\":");
-                http_write_string(request, buf);
-
-                http_write_string(request, "}");
+        for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++) {
+            http_json_begin_object(&json, NULL);
+            if(journies[i].line[0]) {
+                http_json_write_string(&json, "line", journies[i].line);
+                http_json_write_string(&json, "stop", journies[i].stop);
+                http_json_write_string(&json, "destination", journies[i].destination);
+                http_json_write_int(&json, "site-id", journies[i].site_id);
+                http_json_write_int(&json, "mode", journies[i].mode);
+                http_json_write_int(&json, "direction", journies[i].direction);
             }
+            http_json_end_object(&json);
         }
-        http_write_string(request, "]");
 
+        http_json_end_array(&json);
         http_end_body(request);
 
         return HTTP_CGI_DONE;
