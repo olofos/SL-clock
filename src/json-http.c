@@ -47,9 +47,9 @@ void http_json_end_object(struct http_json_writer *json)
 
 void http_json_begin_array(struct http_json_writer *json, const char *name)
 {
-    if(name) {
-        maybe_write_comma(json);
+    maybe_write_comma(json);
 
+    if(name) {
         http_write_string(json->request, "\"");
         http_write_string(json->request, name);
         http_write_string(json->request, "\":[");
@@ -69,15 +69,25 @@ void http_json_write_string(struct http_json_writer *json, const char *name, con
 {
     maybe_write_comma(json);
 
-    http_write_string(json->request, "\"");
-    http_write_string(json->request, name);
-
-    if(str) {
-        http_write_string(json->request, "\":\"");
-        http_write_string(json->request, str);
+    if(name) {
         http_write_string(json->request, "\"");
+        http_write_string(json->request, name);
+
+        if(str) {
+            http_write_string(json->request, "\":\"");
+            http_write_string(json->request, str);
+            http_write_string(json->request, "\"");
+        } else {
+            http_write_string(json->request, "\":null");
+        }
     } else {
-        http_write_string(json->request, "\":null");
+        if(str) {
+            http_write_string(json->request, "\"");
+            http_write_string(json->request, str);
+            http_write_string(json->request, "\"");
+        } else {
+            http_write_string(json->request, "null");
+        }
     }
 }
 
@@ -89,9 +99,12 @@ void http_json_write_int(struct http_json_writer *json, const char *name, int nu
 
     maybe_write_comma(json);
 
-    http_write_string(json->request, "\"");
-    http_write_string(json->request, name);
-    http_write_string(json->request, "\":");
+    if(name) {
+        http_write_string(json->request, "\"");
+        http_write_string(json->request, name);
+        http_write_string(json->request, "\":");
+    }
+
     http_write_string(json->request, buf);
 }
 
@@ -99,11 +112,14 @@ void http_json_write_bool(struct http_json_writer *json, const char *name, int v
 {
     maybe_write_comma(json);
 
-    http_write_string(json->request, "\"");
-    http_write_string(json->request, name);
+    if(name) {
+        http_write_string(json->request, "\"");
+        http_write_string(json->request, name);
+        http_write_string(json->request, "\":");
+    }
     if(val) {
-        http_write_string(json->request, "\":true");
+        http_write_string(json->request, "true");
     } else {
-        http_write_string(json->request, "\":false");
+        http_write_string(json->request, "false");
     }
 }

@@ -177,6 +177,15 @@ static void test__http_json_write_string__writes_to_output(void)
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
+static void test__http_json_write_string__writes_to_output_if_name_is_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_write_string(&json, NULL, "b");
+
+    TEST_ASSERT_EQUAL_STRING("[\"b\"", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
 static void test__http_json_write_string__writes_null_to_output(void)
 {
     http_json_begin_object(&json, NULL);
@@ -186,12 +195,30 @@ static void test__http_json_write_string__writes_null_to_output(void)
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
+static void test__http_json_write_string__writes_null_to_output_if_name_is_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_write_string(&json, NULL, NULL);
+
+    TEST_ASSERT_EQUAL_STRING("[null", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
 static void test__http_json_write_int__writes_to_output(void)
 {
     http_json_begin_object(&json, NULL);
     http_json_write_int(&json, "a", 123);
 
     TEST_ASSERT_EQUAL_STRING("{\"a\":123", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
+static void test__http_json_write_int__writes_to_output_if_name_is_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_write_int(&json, NULL, 123);
+
+    TEST_ASSERT_EQUAL_STRING("[123", output_string);
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
@@ -210,6 +237,24 @@ static void test__http_json_write_bool__writes_false_to_output(void)
     http_json_write_bool(&json, "a", 0);
 
     TEST_ASSERT_EQUAL_STRING("{\"a\":false", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
+static void test__http_json_write_bool__writes_true_to_output_if_name_is_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_write_bool(&json, NULL, 1);
+
+    TEST_ASSERT_EQUAL_STRING("[true", output_string);
+    TEST_ASSERT_EQUAL_INT(1, json.current);
+}
+
+static void test__http_json_write_bool__writes_false_to_output_if_name_is_null(void)
+{
+    http_json_begin_array(&json, NULL);
+    http_json_write_bool(&json, NULL, 0);
+
+    TEST_ASSERT_EQUAL_STRING("[false", output_string);
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
@@ -273,62 +318,52 @@ static void test__http_json_write_bool__writes_comma_to_output_in_object(void)
 static void test__http_json_begin_object__writes_comma_to_output_in_array(void)
 {
     http_json_begin_array(&json, NULL);
-    http_json_begin_object(&json, "b");
+    http_json_begin_object(&json, NULL);
     http_json_end_object(&json);
-    http_json_begin_object(&json, "c");
+    http_json_begin_object(&json, NULL);
 
-    TEST_ASSERT_EQUAL_STRING("[\"b\":{},\"c\":{", output_string);
+    TEST_ASSERT_EQUAL_STRING("[{},{", output_string);
 }
 
 static void test__http_json_begin_array__writes_comma_to_output_in_array(void)
 {
     http_json_begin_array(&json, NULL);
-    http_json_begin_array(&json, "b");
+    http_json_begin_array(&json, NULL);
     http_json_end_array(&json);
-    http_json_begin_array(&json, "c");
+    http_json_begin_array(&json, NULL);
 
-    TEST_ASSERT_EQUAL_STRING("[\"b\":[],\"c\":[", output_string);
+    TEST_ASSERT_EQUAL_STRING("[[],[", output_string);
 }
 
 static void test__http_json_write_string__writes_comma_to_output_in_array(void)
 {
     http_json_begin_array(&json, NULL);
-    http_json_write_string(&json, "a", "b");
-    http_json_write_string(&json, "a", "b");
+    http_json_write_string(&json, NULL, "a");
+    http_json_write_string(&json, NULL, "b");
 
-    TEST_ASSERT_EQUAL_STRING("[\"a\":\"b\",\"a\":\"b\"", output_string);
+    TEST_ASSERT_EQUAL_STRING("[\"a\",\"b\"", output_string);
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
 static void test__http_json_write_int__writes_comma_to_output_in_array(void)
 {
     http_json_begin_array(&json, NULL);
-    http_json_write_string(&json, "a", "b");
-    http_json_write_int(&json, "a", 12345);
+    http_json_write_string(&json, NULL, "a");
+    http_json_write_int(&json, NULL, 12345);
 
-    TEST_ASSERT_EQUAL_STRING("[\"a\":\"b\",\"a\":12345", output_string);
+    TEST_ASSERT_EQUAL_STRING("[\"a\",12345", output_string);
     TEST_ASSERT_EQUAL_INT(1, json.current);
 }
 
 static void test__http_json_write_bool__writes_comma_to_output_in_array(void)
 {
     http_json_begin_array(&json, NULL);
-    http_json_write_bool(&json, "a", 0);
-    http_json_write_bool(&json, "b", 0);
-    http_json_write_bool(&json, "c", 1);
+    http_json_write_bool(&json, NULL, 0);
+    http_json_write_bool(&json, NULL, 0);
+    http_json_write_bool(&json, NULL, 1);
 
-    TEST_ASSERT_EQUAL_STRING("[\"a\":false,\"b\":false,\"c\":true", output_string);
+    TEST_ASSERT_EQUAL_STRING("[false,false,true", output_string);
     TEST_ASSERT_EQUAL_INT(1, json.current);
-}
-
-static void test__http_json_begin_object__writes_comma_to_output_in_array_when_null(void)
-{
-    http_json_begin_array(&json, NULL);
-    http_json_begin_object(&json, NULL);
-    http_json_end_object(&json);
-    http_json_begin_object(&json, NULL);
-
-    TEST_ASSERT_EQUAL_STRING("[{},{", output_string);
 }
 
 
@@ -371,6 +406,12 @@ int main(void)
     RUN_TEST(test__http_json_write_bool__writes_true_to_output);
     RUN_TEST(test__http_json_write_bool__writes_false_to_output);
 
+    RUN_TEST(test__http_json_write_string__writes_to_output_if_name_is_null);
+    RUN_TEST(test__http_json_write_string__writes_null_to_output_if_name_is_null);
+    RUN_TEST(test__http_json_write_int__writes_to_output_if_name_is_null);
+    RUN_TEST(test__http_json_write_bool__writes_true_to_output_if_name_is_null);
+    RUN_TEST(test__http_json_write_bool__writes_false_to_output_if_name_is_null);
+
     RUN_TEST(test__http_json_begin_object__writes_comma_to_output_in_object);
     RUN_TEST(test__http_json_begin_array__writes_comma_to_output_in_object);
     RUN_TEST(test__http_json_write_string__writes_comma_to_output_in_object);
@@ -382,8 +423,6 @@ int main(void)
     RUN_TEST(test__http_json_write_string__writes_comma_to_output_in_array);
     RUN_TEST(test__http_json_write_int__writes_comma_to_output_in_array);
     RUN_TEST(test__http_json_write_bool__writes_comma_to_output_in_array);
-
-    RUN_TEST(test__http_json_begin_object__writes_comma_to_output_in_array_when_null);
 
     return UNITY_END();
 }
