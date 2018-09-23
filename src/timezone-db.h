@@ -6,5 +6,7 @@
 void timezone_db_task(void *pvParameters);
 void timezone_set_timezone(const char *name);
 const char *timezone_get_timezone(void);
+const time_t *timezone_get_next_update(void);
+
 
 #endif

@@ -96,6 +96,11 @@ static int set_timezone(const char *abbrev, int offset, time_t end)
     return 0;
 }
 
+const time_t *timezone_get_next_update(void)
+{
+    return &timezone_next_update;
+}
+
 
 // static int set_timezone(const char *abbrev, int offset, time_t end)
 // {
