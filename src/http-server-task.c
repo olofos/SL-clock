@@ -617,8 +617,6 @@ static void write_time_status(struct http_json_writer* json)
     char buf[32];
     time_t now = time(0);
 
-    LOG("next update: %d", *timezone_get_next_update());
-
     http_json_begin_object(json, "time");
     http_json_write_string(json, "now", format_date(buf, sizeof(buf), &now));
     http_json_begin_object(json, "timezone");
