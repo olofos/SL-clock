@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <lwip/api.h>
 
 #include "uart.h"
 #include "timezone-db.h"
@@ -25,6 +26,7 @@
 #include "json-util.h"
 
 #include "log.h"
+#include "syslog.h"
 
 #define LOG_SYS LOG_SYS_MAIN
 
@@ -99,11 +101,11 @@ void spiffs_fs_init(void)
 
     if(ret < 0)
     {
-        LOG("Could not mount SPIFFS volume (%d)", ret);
+        ERROR("Could not mount SPIFFS volume (%d)", ret);
     }
 }
 
-#define MAX_TASKS 6
+#define MAX_TASKS 7
 
 #define TASK_WIFI 0
 #define TASK_DISPLAY 1
@@ -111,6 +113,7 @@ void spiffs_fs_init(void)
 #define TASK_TZDB 3
 #define TASK_JOURNEY 4
 #define TASK_HTTPD 5
+#define TASK_SYSLOG 6
 
 xTaskHandle task_handle[MAX_TASKS];
 const char *task_names[MAX_TASKS+1] = {
@@ -120,9 +123,9 @@ const char *task_names[MAX_TASKS+1] = {
     [TASK_TZDB] = "tzdb",
     [TASK_JOURNEY] = "journey",
     [TASK_HTTPD] = "httpd",
+    [TASK_SYSLOG] = "syslog",
     NULL
 };
-
 
 void user_init(void)
 {
@@ -131,7 +134,8 @@ void user_init(void)
     UART_SetPrintPort(0);
 
     printf("\n");
-    LOG("SDK version:%s\n", system_get_sdk_version());
+    log_init();
+    LOG("SDK version:%s", system_get_sdk_version());
 
     spiffs_fs_init();
 
@@ -144,10 +148,11 @@ void user_init(void)
     http_mutex = xSemaphoreCreateMutex();
 #endif
 
-    TaskCreate(&wifi_task, task_names[TASK_WIFI], 384, NULL, 6, &task_handle[TASK_WIFI]);
-    TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
+    TaskCreate(&wifi_task, task_names[TASK_WIFI], 512, NULL, 6, &task_handle[TASK_WIFI]);
+    // TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
     TaskCreate(&sntp_task, task_names[TASK_SNTP], 384, NULL, 6, &task_handle[TASK_SNTP]);
     TaskCreate(&timezone_db_task, task_names[TASK_TZDB], 512, NULL, 5, &task_handle[TASK_TZDB]);
     TaskCreate(&journey_task, task_names[TASK_JOURNEY], 1024, NULL, 4, &task_handle[TASK_JOURNEY]);
     TaskCreate(&http_server_task, task_names[TASK_HTTPD], 1024, NULL, 4, &task_handle[TASK_HTTPD]);
+    TaskCreate(&syslog_task, task_names[TASK_SYSLOG], 384, NULL, 2, &task_handle[TASK_SYSLOG]);
 }

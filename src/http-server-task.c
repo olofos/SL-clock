@@ -121,12 +121,17 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                             json_skip_until_end_of_object(&json);
 
                             if (json_get_error(&json)) {
-                                LOG("JSON error %s", json_get_error(&json));
+                                WARNING("JSON error %s", json_get_error(&json));
                             }
 
                             wifi_ap_add(ssid, password);
 
-                            LOG("Added %s", ssid);
+                            NOTE("Added new AP %s", ssid);
+
+                            if(wifi_state == WIFI_STATE_AP_CONNECTED) {
+                                NOTE("Disconnecting from current AP");
+                                wifi_ap_disconnect();
+                            }
 
                             free(password);
                             free(ssid);
@@ -160,18 +165,18 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                     json_skip_until_end_of_object(&json);
 
                     if (json_get_error(&json)) {
-                        LOG("JSON error %s", json_get_error(&json));
+                        WARNING("JSON error %s", json_get_error(&json));
                     }
 
                     if(wifi_current_ap && (strcmp(wifi_current_ap->ssid, ssid) == 0)) {
                         if(wifi_state == WIFI_STATE_AP_CONNECTED) {
                             wifi_ap_disconnect();
-                            }
+                        }
                     }
 
                     wifi_ap_remove(ssid);
 
-                    LOG("Removed %s", ssid);
+                    NOTE("Removed AP %s", ssid);
 
                     free(ssid);
 
@@ -359,32 +364,32 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         strcpy(filename, www_prefix);
         strcat(filename, base_filename);
 
-        int is_gzip = 0;
+        uint8_t file_flag = 0;
         int fd = -1;
 
-        if(request->flags & HTTP_FLAG_ACCEPT_GZIP) {
+        if(!file_flag && (request->flags & HTTP_FLAG_ACCEPT_GZIP)) {
             strcat(filename, GZIP_EXT);
 
             fd = open(filename, O_RDONLY);
 
             if(fd >= 0) {
-                LOG("Opened file \"%s\"", filename);
+                LOG("Opened file '%s'", filename);
 
-                is_gzip = 1;
+                file_flag |= HTTP_FLAG_ACCEPT_GZIP;
             } else {
-                LOG("File \"%s\" not found", filename);
+                LOG("File '%s' not found", filename);
             }
 
             filename[strlen(filename) - strlen(GZIP_EXT)] = 0;
         }
 
-        if(!is_gzip) {
+        if(!file_flag) {
             fd = open(filename, O_RDONLY);
 
             if(fd >= 0) {
-                LOG("Opened file \"%s\"", filename);
+                LOG("Opened file '%s'", filename);
             } else {
-                LOG("File \"%s\" not found", filename);
+                LOG("File '%s' not found", filename);
             }
         }
 
@@ -415,7 +420,8 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         http_begin_response(request, 200, mime_type);
         http_write_header(request, "Cache-Control", "max-age=3600, must-revalidate");
         http_set_content_length(request, s.st_size);
-        if(is_gzip) {
+
+        if(file_flag & HTTP_FLAG_ACCEPT_GZIP) {
             http_write_header(request, "Content-Encoding", "gzip");
         }
         http_end_header(request);
@@ -465,7 +471,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         const char *query_data_raw = http_get_query_arg(request, data->query);
 
         if(!query_data_raw) {
-            LOG("No query provided");
+            WARNING("No query provided");
 
             write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"No query given\"}");
 
@@ -476,9 +482,9 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         char *query_data = malloc(query_data_len + 1);
 
         if(!query_data) {
-            LOG("malloc failed");
+            ERROR("cgi_forward: malloc failed while allocating query_data");
 
-            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating query\"}");
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory while allocating query\"}");
 
             return HTTP_CGI_DONE;
         }
@@ -489,9 +495,9 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         char *path = malloc(path_len);
 
         if(!path) {
-            LOG("malloc failed");
+            ERROR("cgi_forward: malloc failed while allocating path");
 
-            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating path\"}");
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory while allocating path\"}");
 
             free(query_data);
             return HTTP_CGI_DONE;
@@ -500,9 +506,9 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         req = malloc(sizeof(*req));
 
         if(!req) {
-            LOG("malloc failed");
+            ERROR("cgi_forward: malloc failed while allocating req");
 
-            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory when allocating request\"}");
+            write_simple_response(request, 400, "application/json", "{\"StatusCode\":-1,\"Message\":\"Out of memory while allocating request\"}");
 
             free(query_data);
             free(path);
@@ -524,7 +530,7 @@ enum http_cgi_state cgi_forward(struct http_request* request)
         req->port = 80;
 
         if(http_get_request(req) < 0) {
-            LOG("http_get_request failed");
+            ERROR("http_get_request failed");
 
             write_simple_response(request, 500, "application/json", "{\"StatusCode\":-1,\"Message\":\"Request failed\"}");
 
@@ -628,6 +634,7 @@ static void write_wifi_status(struct http_json_writer* json)
 
     http_json_write_string(json, "mode", mode_str);
 
+    http_json_begin_object(json, "station");
     if(mode & 0x01) {
         struct	station_config station_config;
 
@@ -646,11 +653,9 @@ static void write_wifi_status(struct http_json_writer* json)
 
         struct ip_info ip_info;
 
-        wifi_get_ip_info(0, &ip_info);
+        wifi_get_ip_info(STATION_IF, &ip_info);
 
         int8_t rssi = wifi_station_get_rssi();
-
-        http_json_begin_object(json, "station");
 
         http_json_write_string(json, "status", status_string[status]);
         http_json_write_string(json, "ssid", (char*)station_config.ssid);
@@ -671,9 +676,37 @@ static void write_wifi_status(struct http_json_writer* json)
         if(rssi < 31) {
             http_json_write_int(json, "rssi", rssi);
         }
-
-        http_json_end_object(json);
     }
+    http_json_end_object(json);
+
+    http_json_begin_object(json, "softAP");
+    if(mode & 0x02) {
+        struct softap_config softap_config;
+        wifi_softap_get_config(&softap_config);
+
+        uint8_t num_connected = wifi_softap_get_station_num();
+
+        struct ip_info ip_info;
+
+        wifi_get_ip_info(SOFTAP_IF, &ip_info);
+
+        http_json_write_string(json, "ssid", (char*)softap_config.ssid);
+        http_json_write_int(json, "connected-stations", num_connected);
+
+        char buf[16];
+
+        format_ip(buf, ip_info.ip.addr);
+        http_json_write_string(json, "ip", buf);
+
+        format_ip(buf, ip_info.netmask.addr);
+        http_json_write_string(json, "netmask", buf);
+
+        format_ip(buf, ip_info.gw.addr);
+        http_json_write_string(json, "gateway", buf);
+
+    }
+    http_json_end_object(json);
+
 
     http_json_begin_array(json, "known-networks");
     for(const struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
@@ -744,6 +777,105 @@ enum http_cgi_state cgi_status(struct http_request* request)
     return HTTP_CGI_DONE;
 }
 
+static enum http_cgi_state cgi_log(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    http_begin_response(request, 200, "application/json");
+    http_write_header(request, "Cache-Control", "no-cache");
+    http_end_header(request);
+
+    struct http_json_writer json;
+    http_json_init(&json, request);
+
+    http_json_begin_array(&json, NULL);
+
+    for(int tail = (log_cbuf.head + 1) % LOG_CBUF_LEN; tail != log_cbuf.head; tail = (tail + 1) % LOG_CBUF_LEN) {
+        if(log_cbuf.message[tail].message[0]) {
+            http_json_begin_object(&json, NULL);
+
+            http_json_write_int(&json, "timestamp", log_cbuf.message[tail].timestamp);
+            http_json_write_int(&json, "level", log_cbuf.message[tail].level);
+            http_json_write_int(&json, "system", log_cbuf.message[tail].system);
+            http_json_write_string(&json, "message", log_cbuf.message[tail].message);
+
+            http_json_end_object(&json);
+        }
+    }
+
+    http_json_end_array(&json);
+
+    http_end_body(request);
+    return HTTP_CGI_DONE;
+}
+
+static enum http_cgi_state cgi_syslog_config(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_end_header(request);
+
+        struct http_json_writer json;
+        http_json_init(&json, request);
+
+        http_json_begin_object(&json, NULL);
+
+        http_json_begin_array(&json, "systems");
+        for(enum log_system system = 0; system < LOG_NUM_SYSTEMS; system++) {
+            http_json_write_string(&json, NULL, log_system_names[system]);
+        }
+        http_json_end_array(&json);
+
+        http_json_begin_array(&json, "levels");
+        for(enum log_level level = 0; level < LOG_NUM_LEVELS; level++) {
+            http_json_write_string(&json, NULL, log_level_names[level]);
+        }
+        http_json_end_array(&json);
+
+        http_json_begin_array(&json, "system-levels");
+        for(enum log_system system = 0; system < LOG_NUM_SYSTEMS; system++) {
+            http_json_write_int(&json, NULL, log_get_level(LOG_CBUF, system));
+        }
+        http_json_end_array(&json);
+
+
+        http_json_end_object(&json);
+
+        http_end_body(request);
+        return HTTP_CGI_DONE;
+    } else if(request->method == HTTP_METHOD_POST) {
+        json_stream json;
+        json_open_http(&json, request);
+
+        if(json_expect(&json, JSON_ARRAY)) {
+
+            enum log_system system = 0;
+            while(json_next(&json) == JSON_NUMBER) {
+                if(system < LOG_NUM_SYSTEMS) {
+                    enum log_level level = json_get_number(&json);
+                    LOG("Set log system %d to level %d", system, level);
+                    log_set_level(LOG_CBUF, system, level);
+                }
+
+                system++;
+            }
+
+            if(json_expect(&json, JSON_DONE) && system == LOG_NUM_SYSTEMS) {
+                write_simple_response(request, 204, NULL, NULL);
+                return HTTP_CGI_DONE;
+            }
+        }
+
+        write_simple_response(request, 400, "application/json", "{\"message\" : \"Bad request\"}");
+        return HTTP_CGI_DONE;
+    }
+
+    return HTTP_CGI_NOT_FOUND;
+}
+
 struct cgi_forward_data journies_forward_data = {
     .host = "api.sl.se",
     .path = "/api2/realtimedeparturesV4.json?key=" KEY_SL_REALTIME "&TimeWindow=60",
@@ -766,6 +898,8 @@ static struct http_url_handler http_url_tab_[] = {
     {"/api/places.json", cgi_forward, &places_forward_data},
     {"/api/journies.json", cgi_forward, &journies_forward_data},
     {"/api/status.json", cgi_status, NULL},
+    {"/api/log.json", cgi_log, NULL},
+    {"/api/syslog-config.json", cgi_syslog_config, NULL},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
@@ -779,7 +913,7 @@ void http_server_task(void *pvParameters)
 {
     for(;;) {
         http_server_main(80);
-        LOG("The http server has returned!");
+        ERROR("The http server has returned!");
         vTaskDelayMs(5000);
     }
 }
