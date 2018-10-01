@@ -89,7 +89,6 @@ int sh1106_init(void)
 {
     int ret = i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) != I2C_ACK;
     if(!ret) {
-        LOG("ACK");
         i2c_write(sh1106_init_seq, sizeof(sh1106_init_seq));
     } else {
         LOG("No ACK");

@@ -5,7 +5,7 @@
 
 #define LOG_SYS LOG_SYS_WIFI
 
-#define WIFI_SOFTAP_TIMEOUT 5
+#define WIFI_SOFTAP_TIMEOUT 20
 
 enum wifi_state wifi_state;
 struct wifi_ap *wifi_current_ap;
@@ -37,7 +37,7 @@ void wifi_handle_event(enum wifi_event event)
         if(wifi_softap_num_connected_stations > 0) {
             wifi_softap_num_connected_stations--;
         } else {
-            LOG("There were no connected stations!");
+            ERROR("There were no connected stations!");
         }
         return;
     } else if(event == WIFI_EVENT_ERROR) {
@@ -167,7 +167,7 @@ void wifi_handle_event(enum wifi_event event)
 
     case WIFI_STATE_ERROR:
         if(event == WIFI_EVENT_NO_EVENT) {
-            LOG("There was an error, resetting");
+            WARNING("There was an error, resetting");
 
             app_status.wifi_connected = 0;
 

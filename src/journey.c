@@ -83,7 +83,7 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                             } else {
                                 LOG("Unknown transport mode '%s'", s);
                             }
-                            LOG("Mode: %s", s);
+                            INFO("Mode: %s", s);
                             break;
 
                         }
@@ -91,12 +91,12 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                         case LINE_NUMBER:
                             json_expect(json, JSON_STRING);
                             nul_strncpy(line, json_get_string(json, 0), JOURNEY_LINE_LEN);
-                            LOG("Number: %s", json_get_string(json, 0));
+                            INFO("Number: %s", json_get_string(json, 0));
                             break;
 
                         case DESTINATION:
                             json_expect(json, JSON_STRING);
-                            LOG("Destination: %s", json_get_string(json, 0));
+                            INFO("Destination: %s", json_get_string(json, 0));
                             break;
 
                         case JOURNEY_DIRECTION:
@@ -104,13 +104,13 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                             json_expect(json, JSON_NUMBER);
                             uint8_t n = json_get_long(json);
                             dir = n;
-                            LOG("Direction: %d", n);
+                            INFO("Direction: %d", n);
                         }
                             break;
 
                         case STOP_AREA_NAME:
                             json_expect(json, JSON_STRING);
-                            LOG("Stop: %s", json_get_string(json, 0));
+                            INFO("Stop: %s", json_get_string(json, 0));
                             break;
 
                         case EXPECTED_DATE_TIME:
@@ -128,8 +128,8 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                             depart = mktime(&ts);
                             char buf[32];
                             strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &ts);
-                            LOG("Raw time: '%s'", s);
-                            LOG("Time: %s (%lu)", buf, (unsigned long) depart);
+                            INFO("Raw time: '%s'", s);
+                            INFO("Time: %s (%lu)", buf, (unsigned long) depart);
                             break;
                         }
                         }
@@ -140,9 +140,9 @@ enum journey_status journey_parse_json(json_stream *json, struct journey *jour)
                         if(num_departs < JOURNEY_MAX_DEPARTURES)
                         {
                             jour->departures[num_departs++] = depart;
-                            LOG("Match #%d", num_departs);
+                            INFO("Match #%d", num_departs);
                         } else {
-                            LOG("Too many matches");
+                            LOG("Too many matching journies");
                         }
                     }
                     printf("\n");

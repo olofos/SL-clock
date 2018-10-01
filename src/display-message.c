@@ -34,7 +34,7 @@ const char *display_get_message(enum display_message message)
         break;
 
     case DISPLAY_MESSAGE_NONE:
-        LOG("Displaying emty message!");
+        LOG("Displaying empty message!");
         snprintf(buf, sizeof(buf), "No message!\nThis should not be displayed");
         break;
 

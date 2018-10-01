@@ -26,7 +26,7 @@ void journey_set_journey(uint8_t num, const struct journey *jour)
 
         journies[num].next_update = time(0);
     } else {
-        LOG("Trying to set journey #%d!", num);
+        WARNING("Trying to set journey #%d!", num);
     }
 }
 
@@ -139,24 +139,20 @@ void journey_task(void *pvParameters)
                 } else {
                     journey->next_update = now + 30 * 60;
 
-                    LOG("Journey from with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
+                    INFO("Journey from with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
                     for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
                     {
                         char buf[32];
                         strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[i]));
 
-                        LOG("Depature %d at %s", i, buf);
+                        INFO("Depature %d at %s", i, buf);
                     }
 
                     printf("\n");
-
-                    LOG("xPortGetFreeHeapSize: %d", xPortGetFreeHeapSize());
-                    LOG("uxTaskGetStackHighWaterMark: %u", (unsigned)uxTaskGetStackHighWaterMark(0));
                 }
 
                 char buf[32];
                 strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->next_update));
-
                 LOG("Next update at %s", buf);
                 printf("\n");
             }

@@ -126,10 +126,10 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
 
                             wifi_ap_add(ssid, password);
 
-                            NOTE("Added new AP %s", ssid);
+                            LOG("Added new AP %s", ssid);
 
                             if(wifi_state == WIFI_STATE_AP_CONNECTED) {
-                                NOTE("Disconnecting from current AP");
+                                LOG("Disconnecting from current AP");
                                 wifi_ap_disconnect();
                             }
 
@@ -176,7 +176,7 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
 
                     wifi_ap_remove(ssid);
 
-                    NOTE("Removed AP %s", ssid);
+                    LOG("Removed AP %s", ssid);
 
                     free(ssid);
 
@@ -373,11 +373,11 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
             fd = open(filename, O_RDONLY);
 
             if(fd >= 0) {
-                LOG("Opened file '%s'", filename);
+                INFO("Opened file '%s'", filename);
 
                 file_flag |= HTTP_FLAG_ACCEPT_GZIP;
             } else {
-                LOG("File '%s' not found", filename);
+                INFO("File '%s' not found", filename);
             }
 
             filename[strlen(filename) - strlen(GZIP_EXT)] = 0;
@@ -387,9 +387,9 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
             fd = open(filename, O_RDONLY);
 
             if(fd >= 0) {
-                LOG("Opened file '%s'", filename);
+                INFO("Opened file '%s'", filename);
             } else {
-                LOG("File '%s' not found", filename);
+                INFO("File '%s' not found", filename);
             }
         }
 
@@ -400,7 +400,7 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
 
         struct stat s;
         fstat(fd, &s);
-        LOG("File size: %d", s.st_size);
+        INFO("File size: %d", s.st_size);
 
         const char *mime_type = http_get_mime_type(filename);
 
@@ -856,7 +856,7 @@ static enum http_cgi_state cgi_syslog_config(struct http_request* request)
             while(json_next(&json) == JSON_NUMBER) {
                 if(system < LOG_NUM_SYSTEMS) {
                     enum log_level level = json_get_number(&json);
-                    LOG("Set log system %d to level %d", system, level);
+                    INFO("Set log system %d to level %d", system, level);
                     log_set_level(LOG_CBUF, system, level);
                 }
 

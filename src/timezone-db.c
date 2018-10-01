@@ -66,7 +66,7 @@ static int set_timezone(const char *abbrev, int offset, time_t end)
 
     if(strlen(abbrev) < 3)
     {
-        LOG("Error: Timezone abbreviation '%s' should be at least three characters", abbrev);
+        ERROR("Error: Timezone abbreviation '%s' should be at least three characters", abbrev);
         timezone_next_update = now + 60 * 60;
     } else {
         char buf[32];
@@ -147,12 +147,12 @@ static int timezone_db_parse_json(json_stream *json)
                 {
                 case COUNTRY_NAME:
                     json_expect(json, JSON_STRING);
-                    LOG("Country: %s", json_get_string(json,0));
+                    INFO("Country: %s", json_get_string(json,0));
                     break;
 
                 case ZONE_NAME:
                     json_expect(json, JSON_STRING);
-                    LOG("Zone name: %s", json_get_string(json,0));
+                    INFO("Zone name: %s", json_get_string(json,0));
                     break;
 
                 case ABBREVIATION:
@@ -163,12 +163,12 @@ static int timezone_db_parse_json(json_stream *json)
                 case GMT_OFFSET:
                     json_expect(json, JSON_NUMBER);
                     offset = json_get_long(json);
-                    LOG("Offset: %d", offset);
+                    INFO("Offset: %d", offset);
                     break;
 
                 case DST:
                     json_expect(json, JSON_STRING);
-                    LOG("DST: %s", (json_get_string(json,0)[0] == '0') ? "no" : "yes");
+                    INFO("DST: %s", (json_get_string(json,0)[0] == '0') ? "no" : "yes");
                     break;
 
                 case DST_END:
@@ -178,7 +178,7 @@ static int timezone_db_parse_json(json_stream *json)
 
                     char buf[32];
                     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&end));
-                    LOG("Timezone change at %s", buf);
+                    INFO("Timezone change at %s", buf);
                     break;
                 }
                 }
@@ -190,7 +190,7 @@ static int timezone_db_parse_json(json_stream *json)
             if(json_find_name(json, "message"))
             {
                 json_expect(json, JSON_STRING);
-                LOG("Error: %s", json_get_string(json, 0));
+                WARNING("Error: %s", json_get_string(json, 0));
             }
         }
     }
@@ -208,30 +208,19 @@ static int update_timezone(void)
 
     construct_http_request(&request, buf, buf_size);
 
-    // if(http_open(&request) < 0)
-    // {
-    //     LOG("http_open failed");
-    //     return -1;
-    // }
-
-    // if(http_get(&request) < 0) {
-    //     LOG("http_get failed");
-    //     return -1;
-    // }
-
     if(http_get_request(&request) < 0) {
-        LOG("http_get_request failed");
+        WARNING("http_get_request failed");
         return -1;
     }
 
     json_stream *json = malloc(sizeof(json_stream));
     json_open_http(json, &request);
 
-    LOG("Parsing TZDB json");
+    INFO("Parsing TZDB json");
     int ret = timezone_db_parse_json(json);
 
     if (json_get_error(json)) {
-        LOG("JSON error %s", json_get_error(json));
+        ERROR("JSON error %s", json_get_error(json));
     }
 
     json_close(json);
@@ -261,20 +250,13 @@ void timezone_db_task(void *pvParameters)
         } else if(now - timezone_next_update > 0)
         {
 
-            LOG("Updating timezone");
+            INFO("Updating timezone");
 
-            // if(http_mutex && xSemaphoreTake(http_mutex, portMAX_DELAY))
+            int ret = update_timezone();
+
+            if(ret < 0)
             {
-                // LOG("Took HTTP mutex");
-                int ret = update_timezone();
-                // LOG("Give back HTTP mutex");
-
-                // xSemaphoreGive(http_mutex);
-
-                if(ret < 0)
-                {
-                    timezone_next_update = now + 60;
-                }
+                timezone_next_update = now + 60;
             }
         }
 

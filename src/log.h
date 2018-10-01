@@ -58,8 +58,8 @@ void log_set_level(uint8_t dests, enum log_system system, enum log_level level);
 enum log_level log_get_level(uint8_t dests, enum log_system system);
 
 #define DEBUG(...) log_log(LOG_LEVEL_DEBUG, LOG_SYS, __VA_ARGS__)
-#define LOG(...) log_log(LOG_LEVEL_INFO, LOG_SYS, __VA_ARGS__)
-#define NOTE(...) log_log(LOG_LEVEL_NOTICE, LOG_SYS, __VA_ARGS__)
+#define INFO(...) log_log(LOG_LEVEL_INFO, LOG_SYS, __VA_ARGS__)
+#define LOG(...) log_log(LOG_LEVEL_NOTICE, LOG_SYS, __VA_ARGS__)
 #define WARNING(...) log_log(LOG_LEVEL_WARNING, LOG_SYS, __VA_ARGS__)
 #define ERROR(...) log_log(LOG_LEVEL_ERROR, LOG_SYS, __VA_ARGS__)
 
