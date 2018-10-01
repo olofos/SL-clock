@@ -37,8 +37,8 @@
 // Calibration value
 //#define cal             (*((uint32_t*)RTC_SCRATCH3))
 
-uint64_t sntp_base;
-uint32_t tim_ref, cal;
+static uint64_t sntp_base;
+static uint32_t sntp_tim_ref, sntp_cal;
 
 
 struct ntp_packet
@@ -59,20 +59,20 @@ struct ntp_packet
 // Update RTC timer. Called by SNTP module each time it receives an update.
 static void sntp_update_rtc(time_t t, uint32_t us) {
     // DEBUG: Compute and print drift
-    int64_t sntp_current = sntp_base + TIMER_COUNT - tim_ref;
-    int64_t sntp_correct = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / cal;
+    int64_t sntp_current = sntp_base + TIMER_COUNT - sntp_tim_ref;
+    int64_t sntp_correct = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / sntp_cal;
 
     if((time_t)(sntp_correct - sntp_current) > 1<<30)
     {
-        LOG("Adjust: drift = %d000 ticks, cal = %d", (time_t)(sntp_correct - sntp_current)/1000, (uint32_t)cal);
+        LOG("Adjust: drift = %d000 ticks, cal = %d", (time_t)(sntp_correct - sntp_current)/1000, (uint32_t)sntp_cal);
     } else {
-        LOG("Adjust: drift = %d ticks, cal = %d", (int)(sntp_correct - sntp_current), (uint32_t)cal);
+        LOG("Adjust: drift = %d ticks, cal = %d", (int)(sntp_correct - sntp_current), (uint32_t)sntp_cal);
     }
 
-    tim_ref = TIMER_COUNT;
-    cal = system_rtc_clock_cali_proc();
+    sntp_tim_ref = TIMER_COUNT;
+    sntp_cal = system_rtc_clock_cali_proc();
 
-    sntp_base = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / cal;
+    sntp_base = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / sntp_cal;
 }
 
 static int sntp_request(const char *server)
@@ -90,7 +90,7 @@ static int sntp_request(const char *server)
 
     if(err != ERR_OK)
     {
-        LOG("DNS error: %d", err);
+        ERROR("DNS error: %d", err);
         return err;
     }
 
@@ -100,7 +100,7 @@ static int sntp_request(const char *server)
 
     if(!conn || !send_buf || !request)
     {
-        LOG("Netconn or netbuf or data allocation failed.");
+        ERROR("Netconn or netbuf or data allocation failed.");
         netbuf_delete(send_buf);
         netconn_delete(conn);
         return err;
@@ -110,7 +110,7 @@ static int sntp_request(const char *server)
 
     if(err != ERR_OK)
     {
-        LOG("Netconn connect to server %X, port %u failed with %d", addr.addr, SNTP_PORT, err);
+        ERROR("Netconn connect to server %X, port %u failed with %d", addr.addr, SNTP_PORT, err);
         netbuf_delete(send_buf);
         netconn_delete(conn);
         return err;
@@ -124,7 +124,7 @@ static int sntp_request(const char *server)
 
     if(err != ERR_OK)
     {
-        LOG("Netconn send failed with %d", err);
+        ERROR("Netconn send failed with %d", err);
         netconn_delete(conn);
         return err;
     }
@@ -135,7 +135,7 @@ static int sntp_request(const char *server)
 
     if(err != ERR_OK)
     {
-        LOG("Netconn receive failed with %d", err);
+        ERROR("Netconn receive failed with %d", err);
         netconn_delete(conn);
         return err;
     }
@@ -159,7 +159,7 @@ static int sntp_request(const char *server)
 
         app_status.obtained_time = 1;
     } else {
-        LOG("Length of data did not match SNTP_MAX_DATA_LEN, received len %u", len);
+        WARNING("Length of data did not match SNTP_MAX_DATA_LEN, received len %u", len);
 
         return err;
     }
@@ -171,16 +171,16 @@ static int sntp_request(const char *server)
 }
 
 
-inline time_t sntp_get_rtc_time(int32_t *us) {
+inline static time_t sntp_get_rtc_time(int32_t *us) {
     time_t secs;
     uint32_t tim;
     uint64_t base;
 
     tim = TIMER_COUNT;
-    base = sntp_base + tim - tim_ref;
-    secs = base * cal / (1000000U<<12);
+    base = sntp_base + tim - sntp_tim_ref;
+    secs = base * sntp_cal / (1000000U<<12);
     if (us) {
-        *us = base * cal % (1000000U<<12);
+        *us = base * sntp_cal % (1000000U<<12);
     }
     return secs;
 }
@@ -198,8 +198,8 @@ int _gettimeofday_r(struct _reent *r, struct timeval *tp, void *tzp) {
 
 static void sntp_init(void)
 {
-    cal = system_rtc_clock_cali_proc();;
-    tim_ref = TIMER_COUNT;
+    sntp_cal = system_rtc_clock_cali_proc();
+    sntp_tim_ref = TIMER_COUNT;
 }
 
 
@@ -229,9 +229,6 @@ void sntp_task(void *param)
         } else {
             delay = SNTP_DELAY;
         }
-
-        LOG("xPortGetFreeHeapSize: %d", xPortGetFreeHeapSize());
-        LOG("uxTaskGetStackHighWaterMark: %u", (unsigned)uxTaskGetStackHighWaterMark(0));
 
         vTaskDelayMs(delay * 1000);
     }
