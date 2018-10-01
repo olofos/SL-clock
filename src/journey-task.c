@@ -139,7 +139,7 @@ void journey_task(void *pvParameters)
                 } else {
                     journey->next_update = now + 30 * 60;
 
-                    INFO("Journey from with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
+                    INFO("Journey with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
                     for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
                     {
                         char buf[32];
