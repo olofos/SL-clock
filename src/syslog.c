@@ -23,7 +23,7 @@ static err_t syslog_send_package(struct log_cbuf_message *message) {
 
     conn = netconn_new(NETCONN_UDP);
     send_buf = netbuf_new();
-    request = netbuf_alloc(send_buf, strlen(syslog_domain_name) + 1 + strlen(log_system_names[message->system]) + 3 + strlen(message->message));
+    request = netbuf_alloc(send_buf, 5 + strlen(syslog_domain_name) + 1 + strlen(log_system_names[message->system]) + 2 + strlen(message->message));
 
     if(!conn || !send_buf || !request)
     {
@@ -45,14 +45,18 @@ static err_t syslog_send_package(struct log_cbuf_message *message) {
 
     char *buf = request;
 
+    *buf++ = '<';
+    *buf++ = '1';
+    *buf++ = '6';
+    *buf++ = '0' + message->level;
+    *buf++ = '>';
+
     memcpy(buf, syslog_domain_name, strlen(syslog_domain_name));
     buf += strlen(syslog_domain_name);
 
-    *buf++ = '[';
-
+    *buf++ = ' ';
     memcpy(buf, log_system_names[message->system], strlen(log_system_names[message->system]));
     buf += strlen(log_system_names[message->system]);
-    *buf++ = ']';
     *buf++ = ':';
     *buf++ = ' ';
 
