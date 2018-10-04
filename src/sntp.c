@@ -86,6 +86,8 @@ static int sntp_request(const char *server)
     struct ntp_packet *response;
     uint16_t len;
 
+    LOG("Sending SNTP request");
+
     err = netconn_gethostbyname(server, &addr);
 
     if(err != ERR_OK)
@@ -146,16 +148,53 @@ static int sntp_request(const char *server)
     {
         if(response->stratum == 0)
         {
+            ERROR("Got KOD");
             return SNTP_ERR_KOD;
+        }
+
+        if((response->li_vn_mode & 0x38) != SNTP_VERSION) {
+            ERROR("Wrong version in reply: expected %d but got %d", SNTP_VERSION >> 3, (response->li_vn_mode & 0x38) >> 3);
+        }
+
+        if((response->li_vn_mode & 0x07) != SNTP_MODE_SERVER) {
+            ERROR("Wrong mode in reply: expected %x but got %x", SNTP_MODE_SERVER, response->li_vn_mode & 0x07);
+        }
+
+        if((response->li_vn_mode & 0xC0) == 0xC0) {
+            WARNING("Server not synchronised");
+        }
+
+        if((response->transmit_timestamp[0] == 0) && (response->transmit_timestamp[1] == 0))  {
+            ERROR("Transmit timestamp is zero");
         }
 
         uint32_t t = ntohl(response->receive_timestamp[0]) - UNIX_EPOCH;
         uint32_t us = ntohl(response->receive_timestamp[1]) / 4295;
 
-        LOG("Stratum: %d", response->stratum);
-        LOG("Got timestamp %lu", t);
+        INFO("Stratum: %d", response->stratum);
+        INFO("Got timestamp %lu", t);
+
+        time_t old_time = time(0);
+
+        if(app_status.obtained_time) {
+            if(old_time > t &&  old_time - t > 60) {
+                WARNING("Time is going backwards: %d %d", old_time, t);
+            } else if(t > old_time && t - old_time > 60) {
+                WARNING("More than one minute of lag");
+            }
+        }
 
         sntp_update_rtc(t, us);
+
+        char buf[32];
+
+        time_t new_time = time(0);
+
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&old_time));
+        LOG("Old time: %s", buf);
+
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&new_time));
+        LOG("New time: %s", buf);
 
         app_status.obtained_time = 1;
     } else {
