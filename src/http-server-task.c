@@ -257,6 +257,9 @@ enum http_cgi_state cgi_wifi_scan(struct http_request* request)
     }
 }
 
+void config_load_journies(json_stream *json);
+void config_save(const char *filename);
+
 enum http_cgi_state cgi_journey_config(struct http_request* request)
 {
     if(request->method == HTTP_METHOD_GET) {
@@ -269,26 +272,36 @@ enum http_cgi_state cgi_journey_config(struct http_request* request)
         json_writer_begin_array(&json, NULL);
 
         for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++) {
-            json_writer_begin_object(&json, NULL);
             if(journies[i].line[0]) {
+                json_writer_begin_object(&json, NULL);
                 json_writer_write_string(&json, "line", journies[i].line);
                 json_writer_write_string(&json, "stop", journies[i].stop);
                 json_writer_write_string(&json, "destination", journies[i].destination);
                 json_writer_write_int(&json, "site-id", journies[i].site_id);
                 json_writer_write_int(&json, "mode", journies[i].mode);
                 json_writer_write_int(&json, "direction", journies[i].direction);
+                json_writer_end_object(&json);
             }
-            json_writer_end_object(&json);
         }
 
         json_writer_end_array(&json);
         http_end_body(request);
 
         return HTTP_CGI_DONE;
+    } else if(request->method == HTTP_METHOD_POST) {
+        json_stream json;
+        json_open_http(&json, request);
+
+        config_load_journies(&json);
+
+        write_simple_response(request, 204, NULL, NULL);
+
+        config_save("/config.json");
+
+        return HTTP_CGI_DONE;
     } else {
         return HTTP_CGI_NOT_FOUND;
     }
-
 }
 
 static const char *WWW_DIR = "/www";

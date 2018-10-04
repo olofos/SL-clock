@@ -30,16 +30,16 @@ static char* nul_strncpy(char *dest, const char *src, size_t n)
 #define TIMEZONE 2
 #define NUM_CONFIG 3
 
-typedef void (*load_func)(json_stream *);
-typedef void (*save_func)(struct json_writer *, const char *name);
+typedef void (*config_load_func)(json_stream *);
+typedef void (*config_save_func)(struct json_writer *, const char *name);
 
-static void load_wifi(json_stream *json);
-static void load_journies(json_stream *json);
-static void load_timezone(json_stream *json);
+static void config_load_wifi(json_stream *json);
+void config_load_journies(json_stream *json);
+static void config_load_timezone(json_stream *json);
 
-static void save_wifi(struct json_writer *json, const char *name);
-static void save_journies(struct json_writer *json, const char *name);
-static void save_timezone(struct json_writer *json, const char *name);
+static void config_save_wifi(struct json_writer *json, const char *name);
+static void config_save_journies(struct json_writer *json, const char *name);
+static void config_save_timezone(struct json_writer *json, const char *name);
 
 
 static const char* config_names[] = {
@@ -48,19 +48,19 @@ static const char* config_names[] = {
     [TIMEZONE] = "timezone",
 };
 
-static load_func load_funcs[] = {
-    [WIFI] = load_wifi,
-    [JOURNIES] = load_journies,
-    [TIMEZONE] = load_timezone,
+static config_load_func config_load_funcs[] = {
+    [WIFI] = config_load_wifi,
+    [JOURNIES] = config_load_journies,
+    [TIMEZONE] = config_load_timezone,
 };
 
-static save_func save_funcs[] = {
-    [WIFI] = save_wifi,
-    [JOURNIES] = save_journies,
-    [TIMEZONE] = save_timezone,
+static config_save_func config_save_funcs[] = {
+    [WIFI] = config_save_wifi,
+    [JOURNIES] = config_save_journies,
+    [TIMEZONE] = config_save_timezone,
 };
 
-static void load_wifi(json_stream *json)
+static void config_load_wifi(json_stream *json)
 {
     char ssid[WIFI_SSID_LEN];
     char pass[WIFI_PASS_LEN];
@@ -90,7 +90,7 @@ static void load_wifi(json_stream *json)
     }
 }
 
-static void load_journies(json_stream *json)
+void config_load_journies(json_stream *json)
 {
     json_expect(json, JSON_ARRAY);
 
@@ -105,7 +105,7 @@ static void load_journies(json_stream *json)
 
         memset(&journey, 0, sizeof(journey));
 
-        while((n = json_find_names(json, (const char*[]) {"line", "stop","destination","site_id","mode","direction"}, 6)) >= 0)
+        while((n = json_find_names(json, (const char*[]) {"line", "stop","destination","site-id","mode","direction"}, 6)) >= 0)
         {
             switch(n)
             {
@@ -131,7 +131,7 @@ static void load_journies(json_stream *json)
             case 3: // site_id
                 json_expect(json, JSON_NUMBER);
                 journey.site_id = json_get_long(json);
-                printf("  site_id: %d\n", journey.site_id);
+                printf("  site-id: %d\n", journey.site_id);
                 break;
 
             case 4: // mode
@@ -150,9 +150,19 @@ static void load_journies(json_stream *json)
 
         journey_set_journey(num++, &journey);
     }
+
+    while(num < JOURNEY_MAX_JOURNIES) {
+        struct journey journey;
+        journey.line[0] = 0;
+        journey.stop[0] = 0;
+        journey.destination[0] = 0;
+        journey.departures[0] = 0;
+
+        journey_set_journey(num++, &journey);
+    }
 }
 
-static void load_timezone(json_stream *json)
+static void config_load_timezone(json_stream *json)
 {
     if(json_expect(json, JSON_STRING))
     {
@@ -161,7 +171,7 @@ static void load_timezone(json_stream *json)
     }
 }
 
-static void save_wifi(struct json_writer *json, const char *name)
+static void config_save_wifi(struct json_writer *json, const char *name)
 {
     json_writer_begin_array(json, name);
 
@@ -176,7 +186,7 @@ static void save_wifi(struct json_writer *json, const char *name)
 }
 
 
-static void save_journies(struct json_writer *json, const char *name)
+static void config_save_journies(struct json_writer *json, const char *name)
 {
     json_writer_begin_array(json, name);
 
@@ -188,7 +198,7 @@ static void save_journies(struct json_writer *json, const char *name)
             json_writer_write_string(json, "line", journies[i].line);
             json_writer_write_string(json, "stop", journies[i].stop);
             json_writer_write_string(json, "destination", journies[i].destination);
-            json_writer_write_int(json, "site_id", journies[i].site_id);
+            json_writer_write_int(json, "site-id", journies[i].site_id);
             json_writer_write_int(json, "mode", journies[i].mode);
             json_writer_write_int(json, "direction", journies[i].direction);
             json_writer_end_object(json);
@@ -198,7 +208,7 @@ static void save_journies(struct json_writer *json, const char *name)
     json_writer_end_array(json);
 }
 
-static void save_timezone(struct json_writer *json, const char *name)
+static void config_save_timezone(struct json_writer *json, const char *name)
 {
     json_writer_write_string(json, name, timezone_get_timezone());
 }
@@ -223,7 +233,7 @@ void config_load(const char *filename)
     int n;
     while((n = json_find_names(&json, config_names, NUM_CONFIG)) >= 0)
     {
-        load_funcs[n](&json);
+        config_load_funcs[n](&json);
     }
 
     json_close(&json);
@@ -249,7 +259,7 @@ void config_save(const char *filename)
 
     for(int i = 0; i < NUM_CONFIG; i++)
     {
-        save_funcs[i](&json, config_names[i]);
+        config_save_funcs[i](&json, config_names[i]);
     }
 
     json_writer_end_object(&json);
