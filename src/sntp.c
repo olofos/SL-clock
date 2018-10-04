@@ -24,18 +24,11 @@
 
 #define SNTP_ERR_KOD                1
 
+#define RTC_FP_SHIFT 12
+
 #define UNIX_EPOCH                  2208988800UL
 
-//#define TIMER_COUNT	            RTC.COUNTER
 #define TIMER_COUNT (*((uint32_t*)RTC_SLP_CNT_VAL))
-
-// daylight settings
-// Base calculated with value obtained from NTP server (64 bits)
-//#define sntp_base	(*((uint64_t*)RTC_SCRATCH0))
-// Timer value when base was obtained
-//#define tim_ref 	(*((uint32_t*)RTC_SCRATCH2))
-// Calibration value
-//#define cal             (*((uint32_t*)RTC_SCRATCH3))
 
 static uint64_t sntp_base;
 static uint32_t sntp_tim_ref, sntp_cal;
@@ -56,23 +49,48 @@ struct ntp_packet
     uint32_t transmit_timestamp[2];
 } __attribute__ ((packed));
 
+
+static uint64_t sntp_get_rtc_count(void) {
+    uint32_t tim = TIMER_COUNT;
+
+    if(tim < sntp_tim_ref) {
+        sntp_base += tim;
+        sntp_base -= sntp_tim_ref;
+        sntp_base += 1ULL << 32;
+        sntp_tim_ref = tim;
+    }
+
+    return sntp_base + tim - sntp_tim_ref;
+}
+
+static time_t sntp_get_rtc_time(int32_t *us) {
+    uint64_t base = sntp_get_rtc_count();
+    uint64_t base_us = (base * sntp_cal) >> RTC_FP_SHIFT;
+
+    time_t secs = base_us / 1000000U;
+
+    if (us) {
+        *us = base_us % 1000000U;
+    }
+    return secs;
+}
+
 // Update RTC timer. Called by SNTP module each time it receives an update.
 static void sntp_update_rtc(time_t t, uint32_t us) {
     // DEBUG: Compute and print drift
-    int64_t sntp_current = sntp_base + TIMER_COUNT - sntp_tim_ref;
-    int64_t sntp_correct = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / sntp_cal;
-
-    if((time_t)(sntp_correct - sntp_current) > 1<<30)
-    {
-        LOG("Adjust: drift = %d000 ticks, cal = %d", (time_t)(sntp_correct - sntp_current)/1000, (uint32_t)sntp_cal);
-    } else {
-        LOG("Adjust: drift = %d ticks, cal = %d", (int)(sntp_correct - sntp_current), (uint32_t)sntp_cal);
-    }
+    int64_t current = sntp_get_rtc_count();
 
     sntp_tim_ref = TIMER_COUNT;
     sntp_cal = system_rtc_clock_cali_proc();
 
-    sntp_base = (((uint64_t)us + (uint64_t)t * 1000000U)<<12) / sntp_cal;
+    sntp_base = (((uint64_t)us + (uint64_t)t * 1000000U)<<RTC_FP_SHIFT) / sntp_cal;
+
+    if((time_t)(sntp_base - current) > 1<<30)
+    {
+        INFO("Adjust: drift = %d000 ticks, cal = %d", (time_t)(sntp_base - current)/1000, (uint32_t)sntp_cal);
+    } else {
+        INFO("Adjust: drift = %d ticks, cal = %d", (int)(sntp_base - current), (uint32_t)sntp_cal);
+    }
 }
 
 static int sntp_request(const char *server)
@@ -208,22 +226,6 @@ static int sntp_request(const char *server)
 
     return ERR_OK;
 }
-
-
-inline static time_t sntp_get_rtc_time(int32_t *us) {
-    time_t secs;
-    uint32_t tim;
-    uint64_t base;
-
-    tim = TIMER_COUNT;
-    base = sntp_base + tim - sntp_tim_ref;
-    secs = base * sntp_cal / (1000000U<<12);
-    if (us) {
-        *us = base * sntp_cal % (1000000U<<12);
-    }
-    return secs;
-}
-
 
 int _gettimeofday_r(struct _reent *r, struct timeval *tp, void *tzp) {
     (void)r;
