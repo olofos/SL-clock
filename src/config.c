@@ -8,6 +8,7 @@
 #include "config.h"
 #include "json.h"
 #include "json-util.h"
+#include "json-writer.h"
 
 #include "journey.h"
 #include "journey-task.h"
@@ -30,15 +31,15 @@ static char* nul_strncpy(char *dest, const char *src, size_t n)
 #define NUM_CONFIG 3
 
 typedef void (*load_func)(json_stream *);
-typedef void (*save_func)(FILE *);
+typedef void (*save_func)(struct json_writer *, const char *name);
 
 static void load_wifi(json_stream *json);
 static void load_journies(json_stream *json);
 static void load_timezone(json_stream *json);
 
-static void save_wifi(FILE *f);
-static void save_journies(FILE *f);
-static void save_timezone(FILE *f);
+static void save_wifi(struct json_writer *json, const char *name);
+static void save_journies(struct json_writer *json, const char *name);
+static void save_timezone(struct json_writer *json, const char *name);
 
 
 static const char* config_names[] = {
@@ -81,7 +82,6 @@ static void load_wifi(json_stream *json)
                 break;
             case 1:
                 nul_strncpy(pass, json_get_string(json, 0), WIFI_PASS_LEN);
-                printf("PASS: %s\n", json_get_string(json, 0));
                 break;
             }
         }
@@ -161,52 +161,46 @@ static void load_timezone(json_stream *json)
     }
 }
 
-static void save_wifi(FILE *f)
+static void save_wifi(struct json_writer *json, const char *name)
 {
-    struct wifi_ap *ap = wifi_first_ap;
+    json_writer_begin_array(json, name);
 
-    fprintf(f, "[");
-
-    while(ap) {
-        fprintf(f, "{\"ssid\":\"%s\",\"password\":\"%s\"}", ap->ssid, ap->password);
-        if(ap->next) {
-            fprintf(f, ", ");
-        }
-        ap = ap->next;
+    for(struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
+        json_writer_begin_object(json, NULL);
+        json_writer_write_string(json, "ssid", ap->ssid);
+        json_writer_write_string(json, "password", ap->password);
+        json_writer_end_object(json);
     }
 
-    fprintf(f, "]");
+    json_writer_end_array(json);
 }
 
 
-static void save_journies(FILE *f)
+static void save_journies(struct json_writer *json, const char *name)
 {
-    fprintf(f, "[");
+    json_writer_begin_array(json, name);
 
     for(int i = 0; i < JOURNEY_MAX_JOURNIES; i++)
     {
         if(strlen(journies[i].line) > 0)
         {
-            if(i > 0)
-            {
-                fprintf(f,",");
-            }
-            fprintf(f, "\n        {");
-            fprintf(f, "\"line\":\"%s\",", journies[i].line);
-            fprintf(f, "\"stop\":\"%s\",", journies[i].stop);
-            fprintf(f, "\"destination\":\"%s\",", journies[i].destination);
-            fprintf(f, "\"site_id\":%d,", journies[i].site_id);
-            fprintf(f, "\"mode\":%d,", journies[i].mode);
-            fprintf(f, "\"direction\":%d", journies[i].direction);
-            fprintf(f, "}");
+            json_writer_begin_object(json, NULL);
+            json_writer_write_string(json, "line", journies[i].line);
+            json_writer_write_string(json, "stop", journies[i].stop);
+            json_writer_write_string(json, "destination", journies[i].destination);
+            json_writer_write_int(json, "site_id", journies[i].site_id);
+            json_writer_write_int(json, "mode", journies[i].mode);
+            json_writer_write_int(json, "direction", journies[i].direction);
+            json_writer_end_object(json);
+
         }
     }
-    fprintf(f, "\n    ]");
+    json_writer_end_array(json);
 }
 
-static void save_timezone(FILE *f)
+static void save_timezone(struct json_writer *json, const char *name)
 {
-    fprintf(f, "\"%s\"", "Europe/Stockholm");
+    json_writer_write_string(json, name, timezone_get_timezone());
 }
 
 
@@ -247,20 +241,18 @@ void config_save(const char *filename)
         return;
     }
 
-    fprintf(f, "{\n");
+    struct json_writer json;
+
+    json_writer_file_init(&json, f);
+
+    json_writer_begin_object(&json, NULL);
 
     for(int i = 0; i < NUM_CONFIG; i++)
     {
-        if(i > 0)
-        {
-            fprintf(f, ",\n");
-        }
-        fprintf(f, "    \"%s\":", config_names[i]);
-
-        save_funcs[i](f);
+        save_funcs[i](&json, config_names[i]);
     }
 
+    json_writer_end_object(&json);
 
-    fprintf(f, "\n}\n");
     fclose(f);
 }
