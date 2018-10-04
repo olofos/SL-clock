@@ -247,6 +247,8 @@ void sntp_task(void *param)
     int delay = SNTP_DELAY;
     const char *servers[] = {SNTP_SERVERS};
 
+    int current_server = 0;
+
     sntp_init();
 
     for(;;)
@@ -255,16 +257,14 @@ void sntp_task(void *param)
             vTaskDelayMs(100);
         }
 
-        int ret = sntp_request(servers[0]);
+        int ret = sntp_request(servers[current_server]);
         if(ret == SNTP_ERR_KOD)
         {
-            // TODO
-            if(delay < 3600)
-            {
-                delay *= 2;
-            }
+            current_server = (current_server + 1) % (sizeof(servers)/sizeof(servers[0]));
+            LOG("Trying next server: %s", servers[current_server]);
+            delay = SNTP_TIMEOUT_DELAY;
         } else if(ret == ERR_TIMEOUT) {
-            delay = 5;
+            delay = SNTP_TIMEOUT_DELAY;
         } else {
             delay = SNTP_DELAY;
         }
