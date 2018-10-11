@@ -144,12 +144,8 @@ void user_init(void)
     setenv("TZ", "GMT0", 1);
     tzset();
 
-#if 0
-    http_mutex = xSemaphoreCreateMutex();
-#endif
-
     TaskCreate(&wifi_task, task_names[TASK_WIFI], 512, NULL, 6, &task_handle[TASK_WIFI]);
-    // TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
+    TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
     TaskCreate(&sntp_task, task_names[TASK_SNTP], 384, NULL, 6, &task_handle[TASK_SNTP]);
     TaskCreate(&timezone_db_task, task_names[TASK_TZDB], 512, NULL, 5, &task_handle[TASK_TZDB]);
     TaskCreate(&journey_task, task_names[TASK_JOURNEY], 1024, NULL, 4, &task_handle[TASK_JOURNEY]);
