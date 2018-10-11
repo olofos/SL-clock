@@ -905,7 +905,7 @@ struct cgi_forward_data places_forward_data = {
 };
 
 
-static struct http_url_handler http_url_tab_[] = {
+struct http_url_handler http_url_tab[] = {
     {"/api/wifi-scan.json", cgi_wifi_scan, NULL},
     {"/api/wifi-list.json", cgi_wifi_list, NULL},
     {"/api/journies-config.json", cgi_journey_config, NULL},
@@ -918,10 +918,6 @@ static struct http_url_handler http_url_tab_[] = {
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
 };
-
-
-
-struct http_url_handler *http_url_tab = http_url_tab_;
 
 void http_server_task(void *pvParameters)
 {
