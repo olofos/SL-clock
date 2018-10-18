@@ -2,7 +2,7 @@ V=@
 
 SOURCES := fonts.c journey.c journey-task.c config.c framebuffer.c display.c display-message.c \
     json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c sh1106.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
-    i2c-master.c http-server-task.c syslog.c json-writer.c
+    i2c-master.c http-server-task.c http-server-url-handlers.c syslog.c json-writer.c
 
 TARGET=user
 
