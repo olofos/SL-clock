@@ -11,6 +11,7 @@
 #define LOG_SYS LOG_SYS_LOG
 
 ip_addr_t syslog_addr;
+int syslog_enabled;
 
 static const char *syslog_domain_name = "sl-clock";
 
@@ -80,7 +81,7 @@ void syslog_task(void *param)
     IP4_ADDR(&syslog_addr,192,168,10,249);
 
     for(;;) {
-        if(app_status.wifi_connected) {
+        if(app_status.wifi_connected && syslog_enabled) {
             while(log_cbuf.tail != log_cbuf.head) {
                 syslog_send_package(&log_cbuf.message[log_cbuf.tail]);
                 log_cbuf.tail = (log_cbuf.tail + 1) % LOG_CBUF_LEN;

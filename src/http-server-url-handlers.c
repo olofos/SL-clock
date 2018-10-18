@@ -501,6 +501,11 @@ enum http_cgi_state cgi_log(struct http_request* request)
     return HTTP_CGI_DONE;
 }
 
+
+extern ip_addr_t syslog_addr;
+extern int syslog_enabled;
+
+
 enum http_cgi_state cgi_syslog_config(struct http_request* request)
 {
     if(request->method == HTTP_METHOD_GET) {
@@ -512,6 +517,13 @@ enum http_cgi_state cgi_syslog_config(struct http_request* request)
         json_writer_http_init(&json, request);
 
         json_writer_begin_object(&json, NULL);
+
+        char buf[16];
+
+        ipaddr_ntoa_r(&syslog_addr, buf, sizeof(buf));
+        json_writer_write_string(&json, "ip", buf);
+
+        json_writer_write_bool(&json, "enabled", syslog_enabled);
 
         json_writer_begin_array(&json, "systems");
         for(enum log_system system = 0; system < LOG_NUM_SYSTEMS; system++) {
@@ -540,20 +552,88 @@ enum http_cgi_state cgi_syslog_config(struct http_request* request)
         json_stream json;
         json_open_http(&json, request);
 
-        if(json_expect(&json, JSON_ARRAY)) {
+        if(json_expect(&json, JSON_OBJECT)) {
 
-            enum log_system system = 0;
-            while(json_next(&json) == JSON_NUMBER) {
-                if(system < LOG_NUM_SYSTEMS) {
-                    enum log_level level = json_get_number(&json);
-                    INFO("Set log system %d to level %d", system, level);
-                    log_set_level(LOG_CBUF, system, level);
+            ip_addr_t ip = syslog_addr;
+            int enabled = syslog_enabled;
+            enum log_level levels[LOG_NUM_SYSTEMS];
+
+            uint8_t state = 0;
+
+            enum {
+                GOT_IP = 0x01,
+                GOT_ENABLED = 0x02,
+                GOT_LEVELS = 0x04,
+                GOT_ERROR = 0x08,
+            };
+
+            int n;
+            while((n = json_find_names(&json, (const char *[]) { "enabled", "ip", "system-levels"  }, 3)) >= 0) {
+
+                switch(n) {
+                case 0: // enabled
+                {
+                    enum json_type next = json_next(&json);
+
+                    if(next == JSON_TRUE) {
+                        enabled = 1;
+                        state |= GOT_ENABLED;
+                    } else if(next == JSON_FALSE) {
+                        enabled = 0;
+                        state |= GOT_ENABLED;
+                    } else {
+                        state |= GOT_ERROR;
+                    }
                 }
+                break;
 
-                system++;
+                case 1: // ip
+                    if(json_expect(&json, JSON_STRING) && ipaddr_aton(json_get_string(&json, 0), &ip)) {
+                        state |= GOT_IP;
+                    } else {
+                        state |= GOT_ERROR;
+                    }
+                    break;
+
+                case 2: // system-levels
+
+                    if(json_expect(&json, JSON_ARRAY)) {
+
+                        enum log_system system = 0;
+                        enum json_type type;
+                        while((type = json_next(&json)) == JSON_NUMBER) {
+                            if(system < LOG_NUM_SYSTEMS) {
+                                levels[system] = json_get_number(&json);
+                            }
+
+                            system++;
+                        }
+
+                        if((type == JSON_ARRAY_END) && (system == LOG_NUM_SYSTEMS)) {
+                            state |= GOT_LEVELS;
+                        } else {
+                            state |= GOT_ERROR;
+                        }
+                    } else {
+                        state |= GOT_ERROR;
+                    }
+                    break;
+                }
             }
 
-            if(json_expect(&json, JSON_DONE) && system == LOG_NUM_SYSTEMS) {
+            if(!(state & GOT_ERROR)) {
+                if(state & GOT_IP) {
+                    ip_addr_copy(syslog_addr, ip);
+                }
+                if(state & GOT_ENABLED) {
+                    syslog_enabled = enabled;
+                }
+                if(state & GOT_LEVELS) {
+                    for(enum log_system system = 0; system < LOG_NUM_SYSTEMS; system++) {
+                        log_set_level(LOG_CBUF, system, levels[system]);
+                    }
+                }
+
                 http_server_write_simple_response(request, 204, NULL, NULL);
                 return HTTP_CGI_DONE;
             }
