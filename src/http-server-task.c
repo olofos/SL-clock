@@ -319,7 +319,7 @@ struct http_mime_map
     const char *type;
 };
 
-const struct http_mime_map mime_tab[] = {
+static const struct http_mime_map mime_tab[] = {
     {"html", "text/html"},
     {"css", "text/css"},
     {"js", "text/javascript"},
@@ -329,7 +329,7 @@ const struct http_mime_map mime_tab[] = {
     {NULL, "text/plain"},
 };
 
-const char *http_get_mime_type(const char *path)
+static const char *get_mime_type(const char *path)
 {
     const char *ext = strrchr(path, '.');
 
@@ -416,7 +416,7 @@ enum http_cgi_state cgi_spiffs(struct http_request* request)
         fstat(fd, &s);
         INFO("File size: %d", s.st_size);
 
-        const char *mime_type = http_get_mime_type(filename);
+        const char *mime_type = get_mime_type(filename);
 
         free(filename);
 
