@@ -118,7 +118,6 @@ erase:
 
 
 test: build_dirs $(TST_RESULTS)
-	@echo $(TST_RESULTS)
 	@echo "-----------------------"
 	@echo "SKIPPED:" `grep -o '\[  SKIPPED \]' $(RESULTDIR)*.txt|wc -l`
 	@echo "-----------------------"
