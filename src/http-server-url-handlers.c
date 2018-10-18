@@ -4,9 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <esp_common.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <lwip/api.h>
 
 #include "timezone-db.h"
 #include "journey.h"
@@ -318,11 +316,6 @@ static void write_time_status(struct json_writer* json)
 }
 
 
-static void format_ip(char* buf, uint32_t ip)
-{
-    sprintf(buf, "%d.%d.%d.%d", ip & 0xFF, (ip >> 8) & 0xFF, (ip >> 16) & 0xFF, (ip >> 24) & 0xFF);
-}
-
 static void write_wifi_status(struct json_writer* json)
 {
     uint8_t mode = wifi_get_opmode();
@@ -371,14 +364,9 @@ static void write_wifi_status(struct json_writer* json)
         if(status == STATION_GOT_IP) {
             char buf[16];
 
-            format_ip(buf, ip_info.ip.addr);
-            json_writer_write_string(json, "ip", buf);
-
-            format_ip(buf, ip_info.netmask.addr);
-            json_writer_write_string(json, "netmask", buf);
-
-            format_ip(buf, ip_info.gw.addr);
-            json_writer_write_string(json, "gateway", buf);
+            json_writer_write_string(json, "ip", ipaddr_ntoa_r(&ip_info.ip, buf, sizeof(buf)));
+            json_writer_write_string(json, "netmask", ipaddr_ntoa_r(&ip_info.netmask, buf, sizeof(buf)));
+            json_writer_write_string(json, "gateway", ipaddr_ntoa_r(&ip_info.gw, buf, sizeof(buf)));
         }
 
         if(rssi < 31) {
@@ -403,15 +391,9 @@ static void write_wifi_status(struct json_writer* json)
 
         char buf[16];
 
-        format_ip(buf, ip_info.ip.addr);
-        json_writer_write_string(json, "ip", buf);
-
-        format_ip(buf, ip_info.netmask.addr);
-        json_writer_write_string(json, "netmask", buf);
-
-        format_ip(buf, ip_info.gw.addr);
-        json_writer_write_string(json, "gateway", buf);
-
+        json_writer_write_string(json, "ip", ipaddr_ntoa_r(&ip_info.ip, buf, sizeof(buf)));
+        json_writer_write_string(json, "netmask", ipaddr_ntoa_r(&ip_info.netmask, buf, sizeof(buf)));
+        json_writer_write_string(json, "gateway", ipaddr_ntoa_r(&ip_info.gw, buf, sizeof(buf)));
     }
     json_writer_end_object(json);
 
