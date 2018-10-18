@@ -1,8 +1,11 @@
-#include <stdlib.h>
-#include <string.h>
+#include <setjmp.h>
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <cmocka.h>
 
-#include "unity.h"
 #include "framebuffer.h"
 #include "log.h"
 
@@ -49,14 +52,12 @@ static uint8_t icon17x17[3*17] = {
 
 //////// Helper functions for testing //////////////////////////////////////////
 
-void setUp(void)
+static int setup(void **state)
 {
     memset(raw_buffer, CANARY, FB_SIZE + 2 * BUFFER_MARGIN);
     framebuffer = &raw_buffer[BUFFER_MARGIN];
-}
 
-void tearDown(void)
-{
+    return 0;
 }
 
 static void clear_framebuffer(void)
@@ -67,11 +68,11 @@ static void clear_framebuffer(void)
 static void assert_no_drawing_outside_framebuffer(void)
 {
     for(int i = 0; i < BUFFER_MARGIN; i++) {
-        TEST_ASSERT_EQUAL_HEX8(CANARY, raw_buffer[i]);
+        assert_int_equal(CANARY, raw_buffer[i]);
     }
 
     for(int i = BUFFER_MARGIN + FB_SIZE; i < 2 * BUFFER_MARGIN + FB_SIZE; i++) {
-        TEST_ASSERT_EQUAL_HEX8(CANARY, raw_buffer[i]);
+        assert_int_equal(CANARY, raw_buffer[i]);
     }
 }
 
@@ -120,34 +121,34 @@ static void test__fb_blit__should__draw_icon_in_the_correct_spot_helper(int x, i
     for(int i = 0; i < FB_WIDTH; i++) {
         for(int j = 0; j < FB_HEIGHT; j++) {
             if((x <= i) && (i < x + w) && (y <= j) && (j < y + h)) {
-                TEST_ASSERT_TRUE(get_pixel(i, j));
+                assert_true(get_pixel(i, j));
             } else {
-                TEST_ASSERT_FALSE(get_pixel(i, j));
+                assert_false(get_pixel(i, j));
             }
         }
     }
 }
 
 
-//////// Test //////////////////////////////////////////////////////////////////
+//////// Tests /////////////////////////////////////////////////////////////////
 
-static void test__fb_clear__should__clear_framebuffer(void)
+static void test__fb_clear__should__clear_framebuffer(void **state)
 {
     fb_clear();
 
     for(int i = 0; i < FB_SIZE; i++) {
-        TEST_ASSERT_EQUAL_HEX8(0x00, framebuffer[i]);
+        assert_int_equal(0x00, framebuffer[i]);
     }
 }
 
-static void test__fb_clear__should__not_draw_outside_framebuffer(void)
+static void test__fb_clear__should__not_draw_outside_framebuffer(void **state)
 {
     fb_clear();
 
     assert_no_drawing_outside_framebuffer();
 }
 
-static void test__fb_blit__should__not_draw_outside_framebuffer(void)
+static void test__fb_blit__should__not_draw_outside_framebuffer(void **state)
 {
     int w = 8;
     int h = 8;
@@ -168,7 +169,7 @@ static void test__fb_blit__should__not_draw_outside_framebuffer(void)
     assert_no_drawing_outside_framebuffer();
 }
 
-static void test__fb_blit__should__draw_small_icon_in_the_correct_spot(void)
+static void test__fb_blit__should__draw_small_icon_in_the_correct_spot(void **state)
 {
     int w = 8;
     int h = 8;
@@ -187,7 +188,7 @@ static void test__fb_blit__should__draw_small_icon_in_the_correct_spot(void)
     test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT, w, h, icon);
 }
 
-static void test__fb_blit__should__draw_large_icon_in_the_correct_spot(void)
+static void test__fb_blit__should__draw_large_icon_in_the_correct_spot(void **state)
 {
     int w = 17;
     int h = 17;
@@ -206,18 +207,20 @@ static void test__fb_blit__should__draw_large_icon_in_the_correct_spot(void)
     test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT, w, h, icon);
 }
 
+const struct CMUnitTest tests_for_http_io_malloc_mock[] = {
+    cmocka_unit_test_setup(test__fb_clear__should__clear_framebuffer, setup),
+    cmocka_unit_test_setup(test__fb_clear__should__not_draw_outside_framebuffer, setup),
+    cmocka_unit_test_setup(test__fb_blit__should__not_draw_outside_framebuffer, setup),
+    cmocka_unit_test_setup(test__fb_blit__should__draw_small_icon_in_the_correct_spot, setup),
+    cmocka_unit_test_setup(test__fb_blit__should__draw_large_icon_in_the_correct_spot, setup),
+};
 
 //////// Main //////////////////////////////////////////////////////////////////
 
 int main(void)
 {
-    UNITY_BEGIN();
-    RUN_TEST(test__fb_clear__should__clear_framebuffer);
-    RUN_TEST(test__fb_clear__should__not_draw_outside_framebuffer);
+    int fails = 0;
+    fails += cmocka_run_group_tests(tests_for_http_io_malloc_mock, NULL, NULL);
 
-    RUN_TEST(test__fb_blit__should__not_draw_outside_framebuffer);
-    RUN_TEST(test__fb_blit__should__draw_small_icon_in_the_correct_spot);
-    RUN_TEST(test__fb_blit__should__draw_large_icon_in_the_correct_spot);
-
-    return UNITY_END();
+    return fails;
 }

@@ -1,8 +1,12 @@
+#include <setjmp.h>
+#include <stdarg.h>
 #include <stdlib.h>
+#include <cmocka.h>
+
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
-#include "unity.h"
 #include "wifi-task.h"
 
 #include "log.h"
@@ -27,13 +31,15 @@ void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 
 //////// Helper functions for testing //////////////////////////////////////////
 
-void setUp(void)
+int setup(void **state)
 {
     wifi_first_ap = 0;
     wifi_first_scan_ap = 0;
+
+    return 0;
 }
 
-void tearDown(void)
+int teardown(void **state)
 {
     struct wifi_ap *ap = wifi_first_ap;
 
@@ -44,400 +50,406 @@ void tearDown(void)
     }
 
     wifi_scan_free_all();
+
+    return 0;
 }
 
 //////// Test //////////////////////////////////////////////////////////////////
 
-static void test__wifi_ap_add__should__add_the_ap_to_the_front_1(void)
+static void test__wifi_ap_add__should__add_the_ap_to_the_front_1(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
 }
 
-static void test__wifi_ap_add__should__add_the_ap_to_the_front_2(void)
+static void test__wifi_ap_add__should__add_the_ap_to_the_front_2(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_add__should__do_nothing_if_ssid_is_null(void)
+static void test__wifi_ap_add__should__do_nothing_if_ssid_is_null(void **state)
 {
     wifi_ap_add(NULL, "PASS");
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
-static void test__wifi_ap_add__should__do_nothing_if_password_is_null(void)
+static void test__wifi_ap_add__should__do_nothing_if_password_is_null(void **state)
 {
     wifi_ap_add("SSID", NULL);
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
-static void test__wifi_ap_add__should__remove_duplicates_11(void)
+static void test__wifi_ap_add__should__remove_duplicates_11(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
 }
 
-static void test__wifi_ap_add__should__remove_duplicates_112(void)
+static void test__wifi_ap_add__should__remove_duplicates_112(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_add__should__remove_duplicates_121(void)
+static void test__wifi_ap_add__should__remove_duplicates_121(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_add__should__remove_duplicates_122(void)
+static void test__wifi_ap_add__should__remove_duplicates_122(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
 
-static void test__wifi_ap_add_back__should__add_the_ap_to_the_back_1(void)
+static void test__wifi_ap_add_back__should__add_the_ap_to_the_back_1(void **state)
 {
     wifi_ap_add_back("SSID1", "PASS1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
 }
 
-static void test__wifi_ap_add_back__should__add_the_ap_to_the_back_2(void)
+static void test__wifi_ap_add_back__should__add_the_ap_to_the_back_2(void **state)
 {
     wifi_ap_add_back("SSID1", "PASS1");
     wifi_ap_add_back("SSID2", "PASS2");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_add_back__should__do_nothing_if_ssid_is_null(void)
+static void test__wifi_ap_add_back__should__do_nothing_if_ssid_is_null(void **state)
 {
     wifi_ap_add_back(NULL, "PASS");
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
-static void test__wifi_ap_add_back__should__do_nothing_if_password_is_null(void)
+static void test__wifi_ap_add_back__should__do_nothing_if_password_is_null(void **state)
 {
     wifi_ap_add_back("SSID", NULL);
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
 
 
 
-static void test__wifi_ap_number__should__return_the_correct_number_0(void)
+static void test__wifi_ap_number__should__return_the_correct_number_0(void **state)
 {
-    TEST_ASSERT_EQUAL_UINT16(0, wifi_ap_number());
+    assert_int_equal(0, wifi_ap_number());
 }
 
-static void test__wifi_ap_number__should__return_the_correct_number_1(void)
-{
-    wifi_ap_add("SSID1", "PASS1");
-    TEST_ASSERT_EQUAL_UINT16(1, wifi_ap_number());
-}
-
-static void test__wifi_ap_number__should__return_the_correct_number_2(void)
+static void test__wifi_ap_number__should__return_the_correct_number_1(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
-    wifi_ap_add("SSID2", "PASS2");
-    TEST_ASSERT_EQUAL_UINT16(2, wifi_ap_number());
+    assert_int_equal(1, wifi_ap_number());
 }
 
-static void test__wifi_ap_ssid__should__return_null_when_out_of_range_0(void)
-{
-    TEST_ASSERT_NULL(wifi_ap_ssid(0));
-    TEST_ASSERT_NULL(wifi_ap_ssid(1));
-    TEST_ASSERT_NULL(wifi_ap_ssid(2));
-    TEST_ASSERT_NULL(wifi_ap_ssid(3));
-}
-
-static void test__wifi_ap_ssid__should__return_null_when_out_of_range_1(void)
-{
-    wifi_ap_add("SSID1", "PASS1");
-
-    TEST_ASSERT_NULL(wifi_ap_ssid(1));
-    TEST_ASSERT_NULL(wifi_ap_ssid(2));
-    TEST_ASSERT_NULL(wifi_ap_ssid(3));
-}
-
-static void test__wifi_ap_ssid__should__return_null_when_out_of_range_2(void)
+static void test__wifi_ap_number__should__return_the_correct_number_2(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_add("SSID2", "PASS2");
-
-    TEST_ASSERT_NULL(wifi_ap_ssid(2));
-    TEST_ASSERT_NULL(wifi_ap_ssid(3));
+    assert_int_equal(2, wifi_ap_number());
 }
 
-
-static void test__wifi_ap_password__should__return_null_when_out_of_range_0(void)
+static void test__wifi_ap_ssid__should__return_null_when_out_of_range_0(void **state)
 {
-    TEST_ASSERT_NULL(wifi_ap_password(0));
-    TEST_ASSERT_NULL(wifi_ap_password(1));
-    TEST_ASSERT_NULL(wifi_ap_password(2));
-    TEST_ASSERT_NULL(wifi_ap_password(3));
+    assert_null(wifi_ap_ssid(0));
+    assert_null(wifi_ap_ssid(1));
+    assert_null(wifi_ap_ssid(2));
+    assert_null(wifi_ap_ssid(3));
 }
 
-static void test__wifi_ap_password__should__return_null_when_out_of_range_1(void)
+static void test__wifi_ap_ssid__should__return_null_when_out_of_range_1(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NULL(wifi_ap_password(1));
-    TEST_ASSERT_NULL(wifi_ap_password(2));
-    TEST_ASSERT_NULL(wifi_ap_password(3));
+    assert_null(wifi_ap_ssid(1));
+    assert_null(wifi_ap_ssid(2));
+    assert_null(wifi_ap_ssid(3));
 }
 
-static void test__wifi_ap_password__should__return_null_when_out_of_range_2(void)
+static void test__wifi_ap_ssid__should__return_null_when_out_of_range_2(void **state)
+{
+    wifi_ap_add("SSID1", "PASS1");
+    wifi_ap_add("SSID2", "PASS2");
+
+    assert_null(wifi_ap_ssid(2));
+    assert_null(wifi_ap_ssid(3));
+}
+
+
+static void test__wifi_ap_password__should__return_null_when_out_of_range_0(void **state)
+{
+    assert_null(wifi_ap_password(0));
+    assert_null(wifi_ap_password(1));
+    assert_null(wifi_ap_password(2));
+    assert_null(wifi_ap_password(3));
+}
+
+static void test__wifi_ap_password__should__return_null_when_out_of_range_1(void **state)
+{
+    wifi_ap_add("SSID1", "PASS1");
+
+    assert_null(wifi_ap_password(1));
+    assert_null(wifi_ap_password(2));
+    assert_null(wifi_ap_password(3));
+}
+
+static void test__wifi_ap_password__should__return_null_when_out_of_range_2(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
 
-    TEST_ASSERT_NULL(wifi_ap_password(2));
-    TEST_ASSERT_NULL(wifi_ap_password(3));
+    assert_null(wifi_ap_password(2));
+    assert_null(wifi_ap_password(3));
 }
 
 
-static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_ap_added(void)
+static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_ap_added(void **state)
 {
     wifi_ap_remove("SSID1");
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
-static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_1(void)
+static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_1(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
 }
 
-static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_2(void)
+static void test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_2(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_remove__should__remove_the_first_entry_1(void)
+static void test__wifi_ap_remove__should__remove_the_first_entry_1(void **state)
 {
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID1");
 
-    TEST_ASSERT_NULL(wifi_first_ap);
+    assert_null(wifi_first_ap);
 }
 
-static void test__wifi_ap_remove__should__remove_the_first_entry_2(void)
+static void test__wifi_ap_remove__should__remove_the_first_entry_2(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID1");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING(wifi_first_ap->ssid, "SSID2");
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal(wifi_first_ap->ssid, "SSID2");
 }
 
-static void test__wifi_ap_remove__should__remove_the_second_entry_2(void)
+static void test__wifi_ap_remove__should__remove_the_second_entry_2(void **state)
 {
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID2");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_EQUAL_STRING(wifi_first_ap->ssid, "SSID1");
+    assert_non_null(wifi_first_ap);
+    assert_null(wifi_first_ap->next);
+    assert_string_equal(wifi_first_ap->ssid, "SSID1");
 }
 
-static void test__wifi_ap_remove__should__remove_the_second_entry_3(void)
+static void test__wifi_ap_remove__should__remove_the_second_entry_3(void **state)
 {
     wifi_ap_add("SSID3", "PASS3");
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID2");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID3", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS3", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID3", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS3", wifi_first_ap->next->password);
 }
 
-static void test__wifi_ap_remove__should__remove_the_third_entry_3(void)
+static void test__wifi_ap_remove__should__remove_the_third_entry_3(void **state)
 {
     wifi_ap_add("SSID3", "PASS3");
     wifi_ap_add("SSID2", "PASS2");
     wifi_ap_add("SSID1", "PASS1");
     wifi_ap_remove("SSID3");
 
-    TEST_ASSERT_NOT_NULL(wifi_first_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_ap->next);
-    TEST_ASSERT_NULL(wifi_first_ap->next->next);
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS1", wifi_first_ap->password);
-    TEST_ASSERT_EQUAL_STRING("SSID2", wifi_first_ap->next->ssid);
-    TEST_ASSERT_EQUAL_STRING("PASS2", wifi_first_ap->next->password);
+    assert_non_null(wifi_first_ap);
+    assert_non_null(wifi_first_ap->next);
+    assert_null(wifi_first_ap->next->next);
+    assert_string_equal("SSID1", wifi_first_ap->ssid);
+    assert_string_equal("PASS1", wifi_first_ap->password);
+    assert_string_equal("SSID2", wifi_first_ap->next->ssid);
+    assert_string_equal("PASS2", wifi_first_ap->next->password);
 }
 
 
-static void test__wifi_scan_add__should_add_when_empty(void)
+static void test__wifi_scan_add__should_add_when_empty(void **state)
 {
     wifi_scan_add("SSID", -10, 0);
 
-    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap);
-    TEST_ASSERT_NULL(wifi_first_scan_ap->next);
+    assert_non_null(wifi_first_scan_ap);
+    assert_null(wifi_first_scan_ap->next);
 
-    TEST_ASSERT_EQUAL_STRING("SSID", wifi_first_scan_ap->ssid);
-    TEST_ASSERT_EQUAL_INT8(-10, wifi_first_scan_ap->rssi);
-    TEST_ASSERT_EQUAL_UINT8(0, wifi_first_scan_ap->authmode);
+    assert_string_equal("SSID", wifi_first_scan_ap->ssid);
+    assert_int_equal(-10, wifi_first_scan_ap->rssi);
+    assert_int_equal(0, wifi_first_scan_ap->authmode);
 }
 
-static void test__wifi_scan_add__should_add_when_not_empty(void)
+static void test__wifi_scan_add__should_add_when_not_empty(void **state)
 {
     wifi_scan_add("SSID0", 0, 0);
     wifi_scan_add("SSID1", 1, 1);
 
-    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap);
-    TEST_ASSERT_NOT_NULL(wifi_first_scan_ap->next);
-    TEST_ASSERT_NULL(wifi_first_scan_ap->next->next);
+    assert_non_null(wifi_first_scan_ap);
+    assert_non_null(wifi_first_scan_ap->next);
+    assert_null(wifi_first_scan_ap->next->next);
 
-    TEST_ASSERT_EQUAL_STRING("SSID1", wifi_first_scan_ap->ssid);
-    TEST_ASSERT_EQUAL_STRING("SSID0", wifi_first_scan_ap->next->ssid);
+    assert_string_equal("SSID1", wifi_first_scan_ap->ssid);
+    assert_string_equal("SSID0", wifi_first_scan_ap->next->ssid);
 
 
-    TEST_ASSERT_EQUAL_INT8(1, wifi_first_scan_ap->rssi);
-    TEST_ASSERT_EQUAL_INT8(0, wifi_first_scan_ap->next->rssi);
+    assert_int_equal(1, wifi_first_scan_ap->rssi);
+    assert_int_equal(0, wifi_first_scan_ap->next->rssi);
 
-    TEST_ASSERT_EQUAL_UINT8(1, wifi_first_scan_ap->authmode);
-    TEST_ASSERT_EQUAL_UINT8(0, wifi_first_scan_ap->next->authmode);
+    assert_int_equal(1, wifi_first_scan_ap->authmode);
+    assert_int_equal(0, wifi_first_scan_ap->next->authmode);
 }
 
 
+const struct CMUnitTest tests_for_wifi_list[] = {
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__add_the_ap_to_the_front_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__add_the_ap_to_the_front_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__do_nothing_if_ssid_is_null, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__do_nothing_if_password_is_null, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__remove_duplicates_11, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__remove_duplicates_112, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__remove_duplicates_121, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add__should__remove_duplicates_122, setup, teardown),
+
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add_back__should__add_the_ap_to_the_back_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add_back__should__add_the_ap_to_the_back_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add_back__should__do_nothing_if_ssid_is_null, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_add_back__should__do_nothing_if_password_is_null, setup, teardown),
+
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_number__should__return_the_correct_number_0, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_number__should__return_the_correct_number_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_number__should__return_the_correct_number_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_ssid__should__return_null_when_out_of_range_0, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_ssid__should__return_null_when_out_of_range_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_ssid__should__return_null_when_out_of_range_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_password__should__return_null_when_out_of_range_0, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_password__should__return_null_when_out_of_range_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_password__should__return_null_when_out_of_range_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__do_nothing_when_there_is_no_ap_added, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__remove_the_first_entry_1, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__remove_the_first_entry_2, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__remove_the_second_entry_2, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__remove_the_second_entry_3, setup, teardown),
+
+    cmocka_unit_test_setup_teardown(test__wifi_ap_remove__should__remove_the_third_entry_3, setup, teardown),
+
+
+    cmocka_unit_test_setup_teardown(test__wifi_scan_add__should_add_when_empty, setup, teardown),
+    cmocka_unit_test_setup_teardown(test__wifi_scan_add__should_add_when_not_empty, setup, teardown),
+};
+
 //////// Main //////////////////////////////////////////////////////////////////
+
 
 int main(void)
 {
-    UNITY_BEGIN();
+    int fails = 0;
+    fails += cmocka_run_group_tests(tests_for_wifi_list, NULL, NULL);
 
-    RUN_TEST(test__wifi_ap_add__should__add_the_ap_to_the_front_1);
-    RUN_TEST(test__wifi_ap_add__should__add_the_ap_to_the_front_2);
-
-    RUN_TEST(test__wifi_ap_add__should__do_nothing_if_ssid_is_null);
-    RUN_TEST(test__wifi_ap_add__should__do_nothing_if_password_is_null);
-
-    RUN_TEST(test__wifi_ap_add__should__remove_duplicates_11);
-    RUN_TEST(test__wifi_ap_add__should__remove_duplicates_112);
-    RUN_TEST(test__wifi_ap_add__should__remove_duplicates_121);
-    RUN_TEST(test__wifi_ap_add__should__remove_duplicates_122);
-
-
-    RUN_TEST(test__wifi_ap_add_back__should__add_the_ap_to_the_back_1);
-    RUN_TEST(test__wifi_ap_add_back__should__add_the_ap_to_the_back_2);
-
-    RUN_TEST(test__wifi_ap_add_back__should__do_nothing_if_ssid_is_null);
-    RUN_TEST(test__wifi_ap_add_back__should__do_nothing_if_password_is_null);
-
-
-    RUN_TEST(test__wifi_ap_number__should__return_the_correct_number_0);
-    RUN_TEST(test__wifi_ap_number__should__return_the_correct_number_1);
-    RUN_TEST(test__wifi_ap_number__should__return_the_correct_number_2);
-
-    RUN_TEST(test__wifi_ap_ssid__should__return_null_when_out_of_range_0);
-    RUN_TEST(test__wifi_ap_ssid__should__return_null_when_out_of_range_1);
-    RUN_TEST(test__wifi_ap_ssid__should__return_null_when_out_of_range_2);
-
-    RUN_TEST(test__wifi_ap_password__should__return_null_when_out_of_range_0);
-    RUN_TEST(test__wifi_ap_password__should__return_null_when_out_of_range_1);
-    RUN_TEST(test__wifi_ap_password__should__return_null_when_out_of_range_2);
-
-    RUN_TEST(test__wifi_ap_remove__should__do_nothing_when_there_is_no_ap_added);
-
-    RUN_TEST(test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_1);
-    RUN_TEST(test__wifi_ap_remove__should__do_nothing_when_there_is_no_match_2);
-
-    RUN_TEST(test__wifi_ap_remove__should__remove_the_first_entry_1);
-    RUN_TEST(test__wifi_ap_remove__should__remove_the_first_entry_2);
-
-    RUN_TEST(test__wifi_ap_remove__should__remove_the_second_entry_2);
-    RUN_TEST(test__wifi_ap_remove__should__remove_the_second_entry_3);
-
-    RUN_TEST(test__wifi_ap_remove__should__remove_the_third_entry_3);
-
-
-    RUN_TEST(test__wifi_scan_add__should_add_when_empty);
-    RUN_TEST(test__wifi_scan_add__should_add_when_not_empty);
-
-    return UNITY_END();
+    return fails;
 }

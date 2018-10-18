@@ -1,8 +1,10 @@
+#include <setjmp.h>
+#include <stdarg.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
+#include <cmocka.h>
 
-#include "unity.h"
+#include <stdio.h>
+
 #include "display-message.h"
 #include "wifi-task.h"
 #include "status.h"
@@ -49,15 +51,6 @@ void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 
 //////// Global variables used for testing /////////////////////////////////////
 
-//////// Helper functions for testing //////////////////////////////////////////
-
-void setUp(void)
-{
-}
-
-void tearDown(void)
-{
-}
 
 //////// Test //////////////////////////////////////////////////////////////////
 
@@ -75,7 +68,7 @@ struct transition
     enum wifi_event event;
 };
 
-static void test__wifi_handle_event__verify_transition_table(void)
+static void test__wifi_handle_event__verify_transition_table(void **state)
 {
     struct wifi_ap next_ap =    { .ssid = "NEXT",    .password = "PASS", .next = 0 };
     struct wifi_ap current_ap = { .ssid = "CURRENT", .password = "PASS", .next = &next_ap };
@@ -210,14 +203,14 @@ static void test__wifi_handle_event__verify_transition_table(void)
 
         wifi_handle_event(transition_tab[i].event);
 
-        TEST_ASSERT_EQUAL_INT(transition_tab[i].next_state.state,        wifi_state);
-        TEST_ASSERT_EQUAL_PTR(transition_tab[i].next_state.current_ap,   wifi_current_ap);
-        TEST_ASSERT_EQUAL_INT(transition_tab[i].next_state.retries_left, wifi_ap_retries_left);
+        assert_int_equal(transition_tab[i].next_state.state,        wifi_state);
+        assert_ptr_equal(transition_tab[i].next_state.current_ap,   wifi_current_ap);
+        assert_int_equal(transition_tab[i].next_state.retries_left, wifi_ap_retries_left);
     }
 }
 
 
-void test__wifi_handle_event__error_event_should_lead_to_error_state(void)
+static void test__wifi_handle_event__error_event_should_lead_to_error_state(void **state)
 {
     enum wifi_state states[] = {
         WIFI_STATE_NOT_CONNECTED,
@@ -234,18 +227,21 @@ void test__wifi_handle_event__error_event_should_lead_to_error_state(void)
 
         wifi_handle_event(WIFI_EVENT_ERROR);
 
-        TEST_ASSERT_EQUAL_INT(WIFI_STATE_ERROR, wifi_state);
+        assert_int_equal(WIFI_STATE_ERROR, wifi_state);
     }
 }
 
+const struct CMUnitTest tests_for_wifi_logic[] = {
+    cmocka_unit_test(test__wifi_handle_event__verify_transition_table),
+    cmocka_unit_test(test__wifi_handle_event__error_event_should_lead_to_error_state),
+};
 
 //////// Main //////////////////////////////////////////////////////////////////
 
 int main(void)
 {
-    UNITY_BEGIN();
+    int fails = 0;
+    fails += cmocka_run_group_tests(tests_for_wifi_logic, NULL, NULL);
 
-    RUN_TEST(test__wifi_handle_event__verify_transition_table);
-    RUN_TEST(test__wifi_handle_event__error_event_should_lead_to_error_state);
-    return UNITY_END();
+    return fails;
 }

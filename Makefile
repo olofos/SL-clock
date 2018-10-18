@@ -9,19 +9,20 @@ TARGET=user
 SRCDIR := src
 OBJDIR := obj
 DEPDIR := .deps
-TSTDIR := test
-TSTOBJDIR := test/obj
-TSTBINDIR := test/bin
-RESULTDIR := test/results
+TSTDIR := test/
+TSTOBJDIR := test/obj/
+TSTBINDIR := test/bin/
+TSTDEPDIR := test/.deps/
+RESULTDIR := test/results/
 UNITYDIR := unity
 
-BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR)
+BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
 
 SRC := $(SOURCES:%.c=$(SRCDIR)/%.c)
 OBJ := $(SOURCES:%.c=$(OBJDIR)/%.o)
 DEPS := $(SOURCES:%.c=$(DEPDIR)/%.d)
 
-SOURCES_TST = $(wildcard $(TSTDIR)/*.c)
+SOURCES_TST = $(wildcard $(TSTDIR)*.c)
 
 
 AR = xtensa-lx106-elf-ar
@@ -53,15 +54,26 @@ INCLUDES += -I$(SDK_PATH)/include/json
 INCLUDES += -I$(SDK_PATH)/include/openssl
 
 TST_CC = gcc
-TST_CFLAGS = -Wall -I$(UNITYDIR) -I$(SRCDIR) -Ihttp-sm/include -g
+TST_WRAP =
+TST_CFLAGS = -Wall -I$(SRCDIR) -I$(BINSRCDIR) -ggdb -fsanitize=address -fno-omit-frame-pointer --coverage $(TST_WRAP)
 
-TST_RESULTS = $(patsubst $(TSTDIR)/test_%.c,$(RESULTDIR)/test_%.txt,$(SOURCES_TST))
+TST_RESULTS = $(patsubst $(TSTDIR)test_%.c,$(RESULTDIR)test_%.txt,$(SOURCES_TST))
+TST_DEPS = $(TSTDEPDIR)*.d
 
 .PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs
 
 all: build_dirs eagle.app.flash.bin
 
+
+$(TSTBINDIR)test_framebuffer: $(TSTOBJDIR)framebuffer.o
+$(TSTBINDIR)test_json-writer: $(TSTOBJDIR)json-writer.o
+$(TSTBINDIR)test_json-util: $(TSTOBJDIR)json-util.o
+$(TSTBINDIR)test_wifi-list: $(TSTOBJDIR)wifi-list.o
+$(TSTBINDIR)test_wifi-logic: $(TSTOBJDIR)wifi-logic.o
+
+
 -include $(DEPS)
+-include $(TST_DEPS)
 
 http-sm/lib/libhttp-sm.a:
 	$(V)$(MAKE) CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Chttp-sm/ lib/libhttp-sm.a
@@ -106,45 +118,43 @@ erase:
 
 
 test: build_dirs $(TST_RESULTS)
+	@echo $(TST_RESULTS)
 	@echo "-----------------------"
-	@echo "IGNORE:" `grep -o ':IGNORE' $(RESULTDIR)/*.txt|wc -l`
+	@echo "SKIPPED:" `grep -o '\[  SKIPPED \]' $(RESULTDIR)*.txt|wc -l`
 	@echo "-----------------------"
-	@echo `grep -s ':IGNORE' $(RESULTDIR)/*.txt`
+	@grep -s '\[  SKIPPED \]' $(RESULTDIR)*.txt || true
 	@echo "\n-----------------------"
-	@echo "FAIL:" `grep -o ':FAIL' $(RESULTDIR)/*.txt|wc -l`
+	@echo "FAILED:" `grep -o '\[  FAILED  \]' $(RESULTDIR)*.txt|wc -l`
 	@echo "-----------------------"
-	@echo `grep -s ':FAIL' $(RESULTDIR)/*.txt`
+	@grep -s 'FAILED\|LINE\|ERROR' $(RESULTDIR)*.txt || true
 	@echo "\n-----------------------"
-	@echo "PASS:" `grep -o ':PASS' $(RESULTDIR)/*.txt|wc -l`
+	@echo "PASSED:" `grep -o '\[       OK \]' $(RESULTDIR)*.txt|wc -l`
 	@echo "-----------------------"
 	@echo
-	@! grep -s FAIL $(RESULTDIR)/*.txt 2>&1 1>/dev/null
+	@! grep -s '\[  FAILED  \]' $(RESULTDIR)*.txt 2>&1 1>/dev/null
 
 build_dirs:
 	$(V)mkdir -p $(BUILD_DIRS)
 
 
-$(RESULTDIR)/%.txt: $(TSTBINDIR)/%
+$(RESULTDIR)%.txt: $(TSTBINDIR)%
 	@echo Running $<
 	@echo
-	$(V)./$< > $@ || true
+	$(V)./$< > $@ 2>&1 || true
 
-
-$(TSTOBJDIR)/%.o : $(TSTDIR)/%.c
-	$(V)echo CC $@
-	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
-
-$(TSTOBJDIR)/%.o : $(SRCDIR)/%.c
+$(TSTOBJDIR)%.o : $(TSTDIR)%.c
 	@echo CC $@
-	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+	$(V)$(TST_CC) $(TST_CFLAGS)  $(INCLUDES) -c $< -o $@
+	$(V)$(TST_CC) -MM -MT $@ $(TST_CFLAGS) $(INCLUDES) $< > $(TSTDEPDIR)$*.d
 
-$(TSTOBJDIR)/%.o : $(UNITYDIR)/%.c
+$(TSTOBJDIR)%.o : $(SRCDIR)/%.c
 	@echo CC $@
-	$(V)$(TST_CC) $(TST_CFLAGS) -c $< -o $@
+	$(V)$(TST_CC) $(TST_CFLAGS)  $(INCLUDES) -c $< -o $@
+	$(V)$(TST_CC) -MM -MT $@ $(TST_CFLAGS) $(INCLUDES) $< > $(TSTDEPDIR)$*.d
 
-$(TSTBINDIR)/test_%: $(TSTOBJDIR)/test_%.o $(TSTOBJDIR)/%.o $(TSTOBJDIR)/unity.o
+$(TSTBINDIR)test_%: $(TSTOBJDIR)test_%.o
 	@echo CC $@
-	$(V)$(TST_CC) -o $@ $^
+	$(V)$(TST_CC) -o $@ $(TST_CFLAGS) $^ -lcmocka
 
 clean:
 	@echo Cleaning
