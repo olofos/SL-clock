@@ -8,17 +8,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "uart.h"
 #include "timezone-db.h"
 #include "journey.h"
-#include "journey-task.h"
-#include "sntp.h"
 #include "keys.h"
-#include "status.h"
 #include "wifi-task.h"
-#include "config.h"
-#include "display.h"
-#include "display-message.h"
 #include "json.h"
 #include "json-http.h"
 #include "json-util.h"
@@ -30,7 +23,6 @@
 #define LOG_SYS LOG_SYS_HTTPD
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
-
 
 static void write_simple_response(struct http_request* request, int status, const char* content_type, const char* reply)
 {
