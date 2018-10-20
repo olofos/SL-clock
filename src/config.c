@@ -105,7 +105,9 @@ void config_load_journies(json_stream *json)
 
         memset(&journey, 0, sizeof(journey));
 
-        while((n = json_find_names(json, (const char*[]) {"line", "stop","destination","site-id","mode","direction"}, 6)) >= 0)
+        const char *names[] = {"line", "stop","destination","site-id","mode","direction","margin"};
+
+        while((n = json_find_names(json, names, sizeof(names)/sizeof(names[0]))) >= 0)
         {
             switch(n)
             {
@@ -144,6 +146,12 @@ void config_load_journies(json_stream *json)
                 json_expect(json, JSON_NUMBER);
                 journey.direction = json_get_long(json);
                 printf("  direction: %d\n", journey.direction);
+                break;
+
+            case 6: // margin
+                json_expect(json, JSON_NUMBER);
+                journey.margin = json_get_long(json);
+                printf("  margin: %d\n", journey.margin);
                 break;
             }
         }
@@ -201,6 +209,7 @@ static void config_save_journies(struct json_writer *json, const char *name)
             json_writer_write_int(json, "site-id", journies[i].site_id);
             json_writer_write_int(json, "mode", journies[i].mode);
             json_writer_write_int(json, "direction", journies[i].direction);
+            json_writer_write_int(json, "margin", journies[i].margin);
             json_writer_end_object(json);
 
         }

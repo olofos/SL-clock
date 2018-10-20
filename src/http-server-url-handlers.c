@@ -247,6 +247,7 @@ enum http_cgi_state cgi_journey_config(struct http_request* request)
                 json_writer_write_int(&json, "site-id", journies[i].site_id);
                 json_writer_write_int(&json, "mode", journies[i].mode);
                 json_writer_write_int(&json, "direction", journies[i].direction);
+                json_writer_write_int(&json, "margin", journies[i].margin);
                 json_writer_end_object(&json);
             }
         }

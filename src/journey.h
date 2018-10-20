@@ -39,6 +39,8 @@ struct journey {
     time_t departures[JOURNEY_MAX_DEPARTURES];
 
     time_t next_update;
+
+    uint16_t margin;
 };
 
 struct json_stream;

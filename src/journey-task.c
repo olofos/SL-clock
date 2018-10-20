@@ -118,7 +118,7 @@ void journey_task(void *pvParameters)
 
             if(journey->next_update - now > 0)
             {
-                while((journey->departures[0] > 0) && (journey->departures[0] - now <= 0)) {
+                while((journey->departures[0] > 0) && (journey->departures[0] - now <= journey->margin)) {
                     char buf[32];
                     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&journey->departures[0]));
                     LOG("%d: Departured at %s", j, buf);
