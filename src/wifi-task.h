@@ -102,4 +102,11 @@ void wifi_softap_enable(void);
 void wifi_softap_disable(void);
 
 
+void wifi_take_mutex(void);
+void wifi_give_mutex(void);
+
+void wifi_take_scan_mutex(void);
+void wifi_give_scan_mutex(void);
+
+
 #endif

@@ -49,6 +49,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
 
         json_writer_begin_array(&json, NULL);
 
+        wifi_take_mutex();
+
         for(const struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
             json_writer_begin_object(&json, NULL);
             json_writer_write_string(&json, "ssid", ap->ssid);
@@ -56,6 +58,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
             json_writer_write_string(&json, "status", get_status_of_ap(ap));
             json_writer_end_object(&json);
         }
+
+        wifi_give_mutex();
 
         json_writer_end_array(&json);
 
@@ -92,6 +96,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                                 WARNING("JSON error %s", json_get_error(&json));
                             }
 
+                            wifi_take_mutex();
+
                             wifi_ap_add(ssid, password);
 
                             LOG("Added new AP %s", ssid);
@@ -100,6 +106,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                                 LOG("Disconnecting from current AP");
                                 wifi_ap_disconnect();
                             }
+
+                            wifi_give_mutex();
 
                             free(password);
                             free(ssid);
@@ -136,6 +144,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                         WARNING("JSON error %s", json_get_error(&json));
                     }
 
+                    wifi_take_mutex();
+
                     if(wifi_current_ap && (strcmp(wifi_current_ap->ssid, ssid) == 0)) {
                         if(wifi_state == WIFI_STATE_AP_CONNECTED) {
                             wifi_ap_disconnect();
@@ -143,6 +153,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                     }
 
                     wifi_ap_remove(ssid);
+
+                    wifi_give_mutex();
 
                     LOG("Removed AP %s", ssid);
 
@@ -400,9 +412,13 @@ static void write_wifi_status(struct json_writer* json)
 
 
     json_writer_begin_array(json, "known-networks");
+
+    wifi_take_mutex();
     for(const struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
         json_writer_write_string(json, NULL, ap->ssid);
     }
+    wifi_give_mutex();
+
     json_writer_end_array(json);
 
     json_writer_end_object(json);
@@ -431,7 +447,7 @@ void write_journey_status(struct json_writer *json, const struct journey *journe
     json_writer_end_object(json);
 }
 
-void write_journies_status(struct json_writer *json)
+static void write_journies_status(struct json_writer *json)
 {
     json_writer_begin_array(json, "journies");
 

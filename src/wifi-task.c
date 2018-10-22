@@ -1,5 +1,6 @@
 #include <esp_common.h>
 #include <freertos/queue.h>
+#include <freertos/semphr.h>
 #include <string.h>
 
 #include "wifi-task.h"
@@ -13,6 +14,9 @@
 
 
 xQueueHandle wifi_event_queue;
+
+xSemaphoreHandle wifi_mutex = NULL;
+xSemaphoreHandle wifi_scan_mutex = NULL;
 
 static void wifi_handle_event_cb(System_Event_t *evt)
 {
@@ -137,10 +141,30 @@ void wifi_start_scan(void)
     }
 }
 
+void wifi_take_mutex(void)
+{
+    for(;;) {
+        if((wifi_mutex != NULL) && (xSemaphoreTake(wifi_mutex, portMAX_DELAY) == pdTRUE)) {
+            break;
+        }
+        LOG("wifi_take_mutex failed");
+    }
+}
+
+void wifi_give_mutex(void)
+{
+    xSemaphoreGive(wifi_mutex);
+}
+
 
 void wifi_task(void *pvParameters)
 {
     LOG("Starting WiFi");
+
+    wifi_mutex = xSemaphoreCreateMutex();
+    wifi_scan_mutex = xSemaphoreCreateMutex();
+
+    wifi_take_mutex();
 
     wifi_event_queue = xQueueCreate(8, 1);
 
@@ -153,10 +177,14 @@ void wifi_task(void *pvParameters)
 
     wifi_state_machine_init();
 
+    wifi_give_mutex();
+
     uint8_t wifi_event = WIFI_EVENT_NO_EVENT;
     for(;;)
     {
+        wifi_take_mutex();
         wifi_handle_event(wifi_event);
+        wifi_give_mutex();
 
         if(!xQueueReceive(wifi_event_queue, &wifi_event, 500/portTICK_RATE_MS)) {
             wifi_event = WIFI_EVENT_NO_EVENT;

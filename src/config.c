@@ -183,12 +183,16 @@ static void config_save_wifi(struct json_writer *json, const char *name)
 {
     json_writer_begin_array(json, name);
 
+    wifi_take_mutex();
+
     for(struct wifi_ap *ap = wifi_first_ap; ap; ap = ap->next) {
         json_writer_begin_object(json, NULL);
         json_writer_write_string(json, "ssid", ap->ssid);
         json_writer_write_string(json, "password", ap->password);
         json_writer_end_object(json);
     }
+
+    wifi_give_mutex();
 
     json_writer_end_array(json);
 }
