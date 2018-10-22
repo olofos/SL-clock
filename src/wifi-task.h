@@ -8,6 +8,8 @@
 
 #define WIFI_AP_NUMBER_OF_RETRIES 3
 
+#define WIFI_TASK_TICK_RATE 500
+
 enum wifi_event
 {
     WIFI_EVENT_NO_EVENT = 0,

@@ -22,6 +22,7 @@ const char *display_get_message(enum display_message message)
 {
     static char buf[64];
     struct ip_info ipconfig;
+    struct station_config station_config;
 
     switch(message) {
     case DISPLAY_MESSAGE_NO_WIFI:
@@ -31,6 +32,12 @@ const char *display_get_message(enum display_message message)
     case DISPLAY_MESSAGE_NO_JOURNIES:
         wifi_get_ip_info(STATION_IF, &ipconfig);
         snprintf(buf, sizeof(buf), "No journies configured\nConnect to\n" IPSTR "\nto configure", IP2STR(&ipconfig.ip));
+        break;
+
+    case DISPLAY_MESSAGE_WIFI_INFO:
+        wifi_station_get_config(&station_config);
+        wifi_get_ip_info(STATION_IF, &ipconfig);
+        snprintf(buf, sizeof(buf), "Connected to\n%s\nTo configure go to\n" IPSTR, (char*)station_config.ssid, IP2STR(&ipconfig.ip));
         break;
 
     case DISPLAY_MESSAGE_NONE:

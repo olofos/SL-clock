@@ -1,11 +1,13 @@
 #include "wifi-task.h"
 #include "status.h"
 #include "display-message.h"
+#include "config.h"
 #include "log.h"
 
 #define LOG_SYS LOG_SYS_WIFI
 
-#define WIFI_SOFTAP_TIMEOUT 20
+#define WIFI_SOFTAP_TIMEOUT (10 * 1000 / WIFI_TASK_TICK_RATE)
+#define WIFI_INFO_MESSAGE_TIMEOUT (15 * 1000 / WIFI_TASK_TICK_RATE)
 
 enum wifi_state wifi_state;
 struct wifi_ap *wifi_current_ap;
@@ -13,6 +15,8 @@ int wifi_ap_retries_left;
 int wifi_softap_num_connected_stations = 0;
 int wifi_softap_enabled = 0;
 int wifi_softap_timeout;
+
+static int wifi_info_message_timeout;
 
 void wifi_state_machine_init(void)
 {
@@ -79,6 +83,13 @@ void wifi_handle_event(enum wifi_event event)
                     }
                 }
             }
+
+            if(wifi_info_message_timeout > 0) {
+                wifi_info_message_timeout--;
+                if(!wifi_info_message_timeout) {
+                    display_post_message(DISPLAY_MESSAGE_NONE);
+                }
+            }
             break;
 
         case WIFI_EVENT_AP_CONNECTION_LOST:
@@ -104,9 +115,8 @@ void wifi_handle_event(enum wifi_event event)
         case WIFI_EVENT_AP_CONNECTED:
             app_status.wifi_connected = 1;
 
-            if(wifi_softap_enabled) {
-                display_post_message(DISPLAY_MESSAGE_NONE);
-            }
+            display_post_message(DISPLAY_MESSAGE_WIFI_INFO);
+            wifi_info_message_timeout = WIFI_INFO_MESSAGE_TIMEOUT;
 
             LOG("WIFI_STATE_AP_CONNECTING: connected");
             wifi_state = WIFI_STATE_AP_CONNECTED;
