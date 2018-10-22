@@ -186,7 +186,7 @@ void wifi_task(void *pvParameters)
         wifi_handle_event(wifi_event);
         wifi_give_mutex();
 
-        if(!xQueueReceive(wifi_event_queue, &wifi_event, 500/portTICK_RATE_MS)) {
+        if(!xQueueReceive(wifi_event_queue, &wifi_event, WIFI_TASK_TICK_RATE/portTICK_RATE_MS)) {
             wifi_event = WIFI_EVENT_NO_EVENT;
         }
     }

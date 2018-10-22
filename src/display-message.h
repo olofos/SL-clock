@@ -4,6 +4,7 @@
 enum display_message {
     DISPLAY_MESSAGE_NO_WIFI = 0,
     DISPLAY_MESSAGE_NO_JOURNIES = 1,
+    DISPLAY_MESSAGE_WIFI_INFO = 0,
 
     DISPLAY_MESSAGE_NONE = 0xFF,
 };
