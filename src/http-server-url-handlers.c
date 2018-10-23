@@ -18,7 +18,9 @@
 #include "http-sm/http.h"
 #include "http-server-task.h"
 #include "http-server-url-handlers.h"
+#include "config.h"
 
+void config_load_journies(json_stream *json);
 
 #define LOG_SYS LOG_SYS_HTTPD
 
@@ -97,8 +99,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                             }
 
                             wifi_take_mutex();
-
                             wifi_ap_add(ssid, password);
+                            wifi_give_mutex();
 
                             LOG("Added new AP %s", ssid);
 
@@ -107,12 +109,12 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                                 wifi_ap_disconnect();
                             }
 
-                            wifi_give_mutex();
-
                             free(password);
                             free(ssid);
 
                             http_server_write_simple_response(request, 204, NULL, NULL);
+
+                            config_save("/config.json");
 
                             return HTTP_CGI_DONE;
                         }
@@ -159,6 +161,8 @@ enum http_cgi_state cgi_wifi_list(struct http_request* request)
                     LOG("Removed AP %s", ssid);
 
                     free(ssid);
+
+                    config_save("/config.json");
 
                     http_server_write_simple_response(request, 204, NULL, NULL);
 
@@ -235,9 +239,6 @@ enum http_cgi_state cgi_wifi_scan(struct http_request* request)
         return HTTP_CGI_DONE;
     }
 }
-
-void config_load_journies(json_stream *json);
-void config_save(const char *filename);
 
 enum http_cgi_state cgi_journey_config(struct http_request* request)
 {
@@ -653,6 +654,8 @@ enum http_cgi_state cgi_syslog_config(struct http_request* request)
 
                 http_server_write_simple_response(request, 204, NULL, NULL);
                 return HTTP_CGI_DONE;
+            } else {
+                LOG("cgi_syslog_config: Error parsing json");
             }
         }
 
