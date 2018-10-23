@@ -11,6 +11,9 @@
 #define JOURNEY_MAX_DEPARTURES 32
 #define JOURNEY_MAX_JOURNIES 2
 
+#define JOURNEY_UPDATE_INTERVAL (20 * 60)
+#define JOURNEY_ERROR_INTERVAL (1 * 60)
+
 
 enum journey_transport_mode
 {

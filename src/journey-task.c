@@ -68,7 +68,7 @@ static int update_journey(struct journey *journey)
     json_stream json;
     json_open_http(&json, &request);
 
-    journey_parse_json(&json, journey);
+    int ret = journey_parse_json(&json, journey);
 
     if (json_get_error(&json)) {
         LOG("JSON error %s", json_get_error(&json));
@@ -77,7 +77,7 @@ static int update_journey(struct journey *journey)
     json_close(&json);
     http_close(&request);
 
-    return 0;
+    return ret;
 }
 
 void journey_task(void *pvParameters)
@@ -130,14 +130,9 @@ void journey_task(void *pvParameters)
             } else {
                 LOG("Updating journey %d", j);
 
-                int ret = update_journey(journey);
-
-
-                if(ret < 0)
+                if(update_journey(journey))
                 {
-                    journey->next_update = now + 15;
-                } else {
-                    journey->next_update = now + 30 * 60;
+                    journey->next_update = now + JOURNEY_UPDATE_INTERVAL;
 
                     INFO("Journey with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
                     for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
@@ -149,6 +144,8 @@ void journey_task(void *pvParameters)
                     }
 
                     printf("\n");
+                } else {
+                    journey->next_update = now + JOURNEY_ERROR_INTERVAL;
                 }
 
                 char buf[32];
