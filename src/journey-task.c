@@ -25,6 +25,7 @@ void journey_set_journey(uint8_t num, const struct journey *jour)
         memcpy(&journies[num], jour, sizeof(*jour));
 
         journies[num].next_update = time(0);
+        journies[num].timeout = JOURNEY_ERROR_INTERVAL;
     } else {
         WARNING("Trying to set journey #%d!", num);
     }
@@ -89,7 +90,6 @@ void journey_task(void *pvParameters)
         vTaskDelayMs(100);
     }
 
-
     for(;;)
     {
         vTaskDelayMs(1000);
@@ -133,6 +133,7 @@ void journey_task(void *pvParameters)
                 if(update_journey(journey))
                 {
                     journey->next_update = now + JOURNEY_UPDATE_INTERVAL;
+                    journey->timeout = JOURNEY_ERROR_INTERVAL;
 
                     INFO("Journey with line %s from %s to %s:", journey->line, journey->stop, journey->destination);
                     for(int i = 0; i < JOURNEY_MAX_DEPARTURES && journey->departures[i]; i++)
@@ -145,7 +146,13 @@ void journey_task(void *pvParameters)
 
                     printf("\n");
                 } else {
-                    journey->next_update = now + JOURNEY_ERROR_INTERVAL;
+                    journey->next_update = now + journey->timeout;
+
+                    journey->timeout *= 2;
+                    if(journey->timeout > JOURNEY_UPDATE_INTERVAL)
+                    {
+                        journey->timeout = JOURNEY_UPDATE_INTERVAL;
+                    }
                 }
 
                 char buf[32];

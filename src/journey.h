@@ -42,6 +42,7 @@ struct journey {
     time_t departures[JOURNEY_MAX_DEPARTURES];
 
     time_t next_update;
+    time_t timeout;
 
     uint16_t margin;
 };
