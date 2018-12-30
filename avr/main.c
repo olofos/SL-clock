@@ -1,51 +1,56 @@
 #include <avr/io.h>
 #include <util/delay.h>
+#include <avr/interrupt.h>
 
 #include "io.h"
 #include "config.h"
 #include "max7219.h"
 
-#define NUM_MATRICES 4
-#define NUM_ROWS 4
+#define FLAG_REDRAWING 0x01
+#define FLAG_FB_UPDATED 0x02
+
+uint8_t fb_write_index;
+
+#define I2C_ADDRESS 0x5B
+
+#define NUM_MATRIX_COLS 4
+#define NUM_MATRIX_ROWS 4
 
 #define REV(b) ((((b) & 0x80) >> 7) | (((b) & 0x40) >> 5) | (((b) & 0x20) >> 3) | (((b) & 0x10) >> 1) | (((b) & 0x08) << 1) | (((b) & 0x04) << 3) | (((b) & 0x02) << 5) | (((b) & 0x01) << 7))
 
-uint8_t framebuffer[8*NUM_MATRICES*NUM_ROWS] = {
-    0b00000000, 0b00000000, 0b00000100, 0b01000000,
-    0b00000011, 0b00000000, 0b00000010, 0b10000000,
-    0b00000100, 0b10000000, 0b00000001, 0b00000000,
-    0b00001000, 0b01000000, 0b00000010, 0b10000000,
-    0b00001000, 0b01000000, 0b00000100, 0b01000000,
-    0b00000100, 0b10000000, 0b00000000, 0b00000000,
-    0b00000011, 0b00000000, 0b00000000, 0b00000000,
-    0b00000000, 0b00000000, 0b00000000, 0b00000000,
-
-    0b00000000, 0b00001000, 0b00000000, 0b01101100,
-    0b00000000, 0b00001000, 0b00110000, 0b10010010,
-    0b00000000, 0b00001000, 0b01001000, 0b10000010,
-    0b00000000, 0b00001000, 0b10000100, 0b01000100,
-    0b00000000, 0b00001000, 0b10000100, 0b00101000,
-    0b00000000, 0b00001000, 0b01001000, 0b00010000,
-    0b00000000, 0b00001000, 0b00110000, 0b00000000,
-    0b11111111, 0b00001000, 0b00000000, 0b00000000,
-
-    0b10000000, 0b00000000, 0b00000000, 0b00000010,
-    0b01000000, 0b00000001, 0b00000000, 0b00000100,
-    0b00100000, 0b00000010, 0b10000000, 0b00001000,
-    0b00010000, 0b00000100, 0b01000000, 0b00010000,
-    0b00001000, 0b00000010, 0b10000000, 0b00100000,
-    0b00000100, 0b00000001, 0b00000000, 0b01000000,
-    0b00000010, 0b00000000, 0b00000000, 0b10000000,
-    0b00000001, 0b00000000, 0b00000001, 0b00000000,
-
-    0b00000000, 0b10000000, 0b00000010, 0b00000000,
-    0b00000000, 0b01000000, 0b00000100, 0b00000000,
-    0b00000000, 0b00100000, 0b00001000, 0b00000000,
-    0b00000000, 0b00010000, 0b00010000, 0b00000000,
-    0b00000000, 0b00001000, 0b00100000, 0b00000000,
-    0b00000000, 0b00000100, 0b01000000, 0b00000000,
-    0b00000000, 0b00000010, 0b10000000, 0b00000000,
-    0b00000000, 0b00000001, 0b00000000, 0b00000000,
+volatile uint8_t framebuffer[8*NUM_MATRIX_COLS*NUM_MATRIX_ROWS] = {
+    REV(0b00000000), REV(0b00000000), REV(0b00000000), REV(0b00000000),
+    REV(0b00000000), REV(0b00001111), REV(0b11110000), REV(0b00000000),
+    REV(0b00000000), REV(0b01110000), REV(0b00001110), REV(0b00000000),
+    REV(0b00000001), REV(0b10000000), REV(0b00000001), REV(0b10000000),
+    REV(0b00000010), REV(0b00000000), REV(0b00000000), REV(0b01000000),
+    REV(0b00000100), REV(0b00011000), REV(0b00011000), REV(0b00100000),
+    REV(0b00001000), REV(0b00100100), REV(0b00100100), REV(0b00010000),
+    REV(0b00010000), REV(0b01000010), REV(0b01000010), REV(0b00001000),
+    REV(0b00100000), REV(0b01000010), REV(0b01000010), REV(0b00000100),
+    REV(0b00100000), REV(0b01000010), REV(0b01000010), REV(0b00000100),
+    REV(0b01000000), REV(0b01000010), REV(0b01000010), REV(0b00000010),
+    REV(0b01000111), REV(0b00100100), REV(0b00100100), REV(0b11100010),
+    REV(0b10001000), REV(0b10011000), REV(0b00011001), REV(0b00010001),
+    REV(0b10010000), REV(0b01000000), REV(0b00000010), REV(0b00001001),
+    REV(0b10010000), REV(0b00100000), REV(0b00000100), REV(0b00001001),
+    REV(0b10001000), REV(0b00100000), REV(0b00000100), REV(0b00010001),
+    REV(0b10001000), REV(0b00100011), REV(0b11000100), REV(0b00010001),
+    REV(0b10000100), REV(0b01001100), REV(0b00110010), REV(0b00100001),
+    REV(0b10000011), REV(0b10010000), REV(0b00001001), REV(0b11000001),
+    REV(0b10000000), REV(0b00100000), REV(0b00000100), REV(0b00000001),
+    REV(0b01000000), REV(0b01000000), REV(0b00000010), REV(0b00000010),
+    REV(0b01000000), REV(0b01000000), REV(0b00000010), REV(0b00000010),
+    REV(0b01000000), REV(0b10000000), REV(0b00000001), REV(0b00000010),
+    REV(0b00100000), REV(0b10000000), REV(0b00000001), REV(0b00000100),
+    REV(0b00100000), REV(0b10000000), REV(0b00000001), REV(0b00000100),
+    REV(0b00010000), REV(0b10000011), REV(0b11000001), REV(0b00001000),
+    REV(0b00001000), REV(0b01001100), REV(0b00110010), REV(0b00010000),
+    REV(0b00000100), REV(0b00110000), REV(0b00001100), REV(0b00100000),
+    REV(0b00000010), REV(0b00000000), REV(0b00000000), REV(0b01000000),
+    REV(0b00000001), REV(0b10000000), REV(0b00000001), REV(0b10000000),
+    REV(0b00000000), REV(0b01110000), REV(0b00001110), REV(0b00000000),
+    REV(0b00000000), REV(0b00001111), REV(0b11110000), REV(0b00000000),
 };
 
 // Missing definitions for USART in SPI mode
@@ -133,7 +138,7 @@ void SPI_CS_high(uint8_t cs)
 void MAX7219_cmd(uint8_t reg, uint8_t val, uint8_t cs)
 {
     SPI_CS_low(cs);
-    for(uint8_t i = 0; i < NUM_MATRICES; i++) {
+    for(uint8_t i = 0; i < NUM_MATRIX_COLS; i++) {
         SPI_transfer(reg);
         SPI_transfer(val);
     }
@@ -156,18 +161,6 @@ void MAX7219_init(uint8_t cs)
     MAX7219_cmd(MAX7219_REG_SHUTDOWN, 0x01, cs);
 }
 
-uint8_t rev(uint8_t d)
-{
-    uint8_t n = 0;
-    for(int i = 0; i < 8; i++) {
-        if(d & (1 << i)) {
-            n |= 1 << (7-i);
-
-        }
-    }
-    return n;
-}
-
 void fb_show(void)
 {
     int n = 3;
@@ -177,7 +170,7 @@ void fb_show(void)
         SPI_CS_low(CS1);
         for(uint8_t x = 0; x < 4; x++) {
             SPI_transfer(y);
-            SPI_transfer(rev(framebuffer[n--]));
+            SPI_transfer(framebuffer[n--]);
         }
         SPI_CS_high(CS1);
         n += 8;
@@ -187,7 +180,7 @@ void fb_show(void)
         SPI_CS_low(CS2);
         for(uint8_t x = 0; x < 4; x++) {
             SPI_transfer(y);
-            SPI_transfer(rev(framebuffer[n--]));
+            SPI_transfer(framebuffer[n--]);
         }
         SPI_CS_high(CS2);
         n += 8;
@@ -197,7 +190,7 @@ void fb_show(void)
         SPI_CS_low(CS3);
         for(uint8_t x = 0; x < 4; x++) {
             SPI_transfer(y);
-            SPI_transfer(rev(framebuffer[n--]));
+            SPI_transfer(framebuffer[n--]);
         }
         SPI_CS_high(CS3);
         n += 8;
@@ -207,25 +200,26 @@ void fb_show(void)
         SPI_CS_low(CS4);
         for(uint8_t x = 0; x < 4; x++) {
             SPI_transfer(y);
-            SPI_transfer(rev(framebuffer[n--]));
+            SPI_transfer(framebuffer[n--]);
         }
         SPI_CS_high(CS4);
         n += 8;
     }
 }
 
+#if 0
+
 #define fb_transfer_byte(y, index) do { SPI_transfer(REV(y)); SPI_transfer(framebuffer[index]); } while(0)
 
-#define fb_transfer_line(cs, y, index) do {                \
-    SPI_CS_low(cs);                                     \
-    fb_transfer_byte(y, index + 3);                        \
-    fb_transfer_byte(y, index + 2);                        \
-    fb_transfer_byte(y, index + 1);                        \
-    fb_transfer_byte(y, index + 0);                        \
-    SPI_CS_high(cs);                                    \
+#define fb_transfer_line(cs, y, index) do {     \
+        SPI_CS_low(cs);                         \
+        fb_transfer_byte(y, index + 3);         \
+        fb_transfer_byte(y, index + 2);         \
+        fb_transfer_byte(y, index + 1);         \
+        fb_transfer_byte(y, index + 0);         \
+        SPI_CS_high(cs);                        \
     } while(0)
 
-#if 0
 void fb_test(void)
 {
     fb_transfer_line(CS1, 8, 0);
@@ -266,40 +260,71 @@ void fb_test(void)
 }
 #endif
 
+
+void i2c_init(void)
+{
+    TWSA = I2C_ADDRESS << 1;
+    TWSAM = 0;
+    TWSCRA = _BV(TWSHE) | _BV(TWDIE) | _BV(TWASIE) | _BV(TWEN) | _BV(TWSIE);
+}
+
 int main(void)
 {
     IO_init();
     SPI_init();
+    i2c_init();
 
     MAX7219_init(CS1 | CS2 | CS3 | CS4);
     MAX7219_blank(CS1 | CS2 | CS3 | CS4);
 
+    GPIOR0 |= FLAG_FB_UPDATED;
+    sei();
 
     for(;;) {
-        MAX7219_blank(CS1 | CS2 | CS3 | CS4);
-        SPI_CS_low(CS1 | CS2 | CS3 | CS4);
-
-        for(int j = 1; j <= 4; j++) {
-            SPI_transfer(j);
-            SPI_transfer(0x81);
+        if(GPIOR0 & FLAG_FB_UPDATED) {
+            GPIOR0 |= FLAG_REDRAWING;
+            fb_show();
+            GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
         }
+    }
+}
 
-        SPI_CS_high(CS1 | CS2 | CS3 | CS4);
+#define TW_CMD_ACK (_BV(TWCMD1) | _BV(TWCMD0))
+#define TW_CMD_NACK (_BV(TWAA) | _BV(TWCMD1) | _BV(TWCMD0))
+#define TW_CMD_ACK_WAIT_START (_BV(TWCMD1))
+#define TW_CMD_NACK_WAIT_START (_BV(TWAA) | _BV(TWCMD1))
 
-        SPI_CS_low(CS1 | CS2 | CS3 | CS4);
 
-        for(int j = 1; j <= 4; j++) {
-            SPI_transfer(9-j);
-            SPI_transfer(0x81);
+
+ISR(TWI_SLAVE_vect)
+{
+    uint8_t status = TWSSRA;
+
+    if(status & (_BV(TWC) | _BV(TWBE))) {
+        TWSSRA |= _BV(TWASIF) | _BV(TWDIF) | _BV(TWBE); // Release hold
+    } else if(status & _BV(TWASIF)) {
+        if(status & _BV(TWAS)) { // Address received
+            if(GPIOR0 & FLAG_REDRAWING) {
+                TWSCRB = TW_CMD_NACK;
+            } else {
+                if(!(status & _BV(TWDIR))) {
+                    fb_write_index = 0;
+                }
+
+                TWSCRB = TW_CMD_ACK;
+            }
+        } else { // Stop condition
+            GPIOR0 |= FLAG_FB_UPDATED;
+
+            TWSSRA = _BV(TWASIF);
         }
-
-        SPI_CS_high(CS1 | CS2 | CS3 | CS4);
-
-
-        _delay_ms(500);
-
-        fb_show();
-
-        _delay_ms(500);
+    } else if(status & _BV(TWDIF)) {
+        if(status & _BV(TWDIR)) { // Send data to master
+            TWSD = 0xCC;
+        } else { // Data received
+            framebuffer[fb_write_index] = TWSD;
+            fb_write_index = (fb_write_index + 1) % sizeof(framebuffer);
+            TWSCRB = TW_CMD_ACK;
+        }
     }
 }
