@@ -1,5 +1,5 @@
-#ifndef FRAMEBUFFER_H_
-#define FRAMEBUFFER_H_
+#ifndef OLED_FRAMEBUFFER_H_
+#define OLED_FRAMEBUFFER_H_
 
 
 #define OLED_WIDTH 128
