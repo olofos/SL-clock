@@ -22,4 +22,18 @@ struct icon {
 
 extern uint8_t *framebuffer;
 
+extern void (*fb_blit)(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len);
+extern enum fb_pen fb_current_pen;
+
+void fb_set_pen(enum fb_pen pen);
+
+void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const uint8_t *font_data, enum fb_alignment alignment);
+uint16_t fb_string_length(const char *text, uint8_t len, const uint8_t *font_data);
+
+void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignment alignment);
+
+struct icon *fb_load_icon_pbm(const char *filename);
+void fb_free_icon(struct icon *);
+
+
 #endif

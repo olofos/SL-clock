@@ -92,5 +92,9 @@ int sh1106_init(void)
     }
     i2c_stop();
 
+    if(!ret) {
+        fb_blit = oled_blit;
+    }
+
     return ret;
 }
