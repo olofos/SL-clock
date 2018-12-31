@@ -25,7 +25,7 @@ struct icon {
     const uint8_t *data;
 };
 
-extern uint8_t *framebuffer;
+extern uint8_t *oled_framebuffer;
 
 void oled_set_pixel(int16_t x, int16_t y);
 void oled_display(void);

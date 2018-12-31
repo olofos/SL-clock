@@ -17,7 +17,7 @@
 //////// Stubs needed by frambuffer.c //////////////////////////////////////////
 
 const uint8_t paw_64x64[1];
-uint8_t *framebuffer;
+uint8_t *oled_framebuffer;
 
 void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 {
@@ -55,14 +55,14 @@ static uint8_t icon17x17[3*17] = {
 static int setup(void **state)
 {
     memset(raw_buffer, CANARY, OLED_SIZE + 2 * BUFFER_MARGIN);
-    framebuffer = &raw_buffer[BUFFER_MARGIN];
+    oled_framebuffer = &raw_buffer[BUFFER_MARGIN];
 
     return 0;
 }
 
 static void clear_framebuffer(void)
 {
-    memset(framebuffer, 0, OLED_SIZE);
+    memset(oled_framebuffer, 0, OLED_SIZE);
 }
 
 static void assert_no_drawing_outside_framebuffer(void)
@@ -108,7 +108,7 @@ static void draw_icon_around_point(int x, int y, int w, int h, uint8_t *icon)
 
 static int get_pixel(int x, int y)
 {
-    return framebuffer[x + OLED_WIDTH * (y / 8)] & (1 << (y % 8));
+    return oled_framebuffer[x + OLED_WIDTH * (y / 8)] & (1 << (y % 8));
 }
 
 static void test__oled_blit__should__draw_icon_in_the_correct_spot_helper(int x, int y, int w, int h, uint8_t *icon)
@@ -137,7 +137,7 @@ static void test__oled_clear__should__clear_framebuffer(void **state)
     oled_clear();
 
     for(int i = 0; i < OLED_SIZE; i++) {
-        assert_int_equal(0x00, framebuffer[i]);
+        assert_int_equal(0x00, oled_framebuffer[i]);
     }
 }
 

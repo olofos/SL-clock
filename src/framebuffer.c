@@ -24,9 +24,9 @@ void oled_set_pen(enum oled_pen pen)
 static void oled_set_pixel_row(uint16_t n, uint8_t m)
 {
     if(current_pen == OLED_NORMAL) {
-        framebuffer[n] |= m;
+        oled_framebuffer[n] |= m;
     } else {
-        framebuffer[n] &= ~m;
+        oled_framebuffer[n] &= ~m;
     }
 }
 
@@ -44,7 +44,7 @@ void oled_set_pixel(int16_t x,int16_t y)
 
 void oled_clear(void)
 {
-    memset(framebuffer, 0, OLED_SIZE);
+    memset(oled_framebuffer, 0, OLED_SIZE);
 }
 
 void oled_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
