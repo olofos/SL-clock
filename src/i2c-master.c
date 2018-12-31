@@ -3,20 +3,6 @@
 #include "gpio.h"
 #include "i2c-master.h"
 
-static inline void i2c_sda_high(void)
-{
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1 << I2C_SDA_GPIO);
-}
-
-static inline void i2c_sda_low(void)
-{
-    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1 << I2C_SDA_GPIO);
-}
-
-static inline uint16_t i2c_sda_read(void)
-{
-    return ( GPIO_REG_READ(GPIO_IN_ADDRESS) & (1 << I2C_SDA_GPIO) );
-}
 
 static inline void i2c_sda_input(void)
 {
@@ -28,21 +14,19 @@ static inline void i2c_sda_output(void)
     GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1 << I2C_SDA_GPIO);
 }
 
-
-
-static inline void i2c_scl_high(void)
+static inline void i2c_sda_high(void)
 {
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1 << I2C_SCL_GPIO);
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1 << I2C_SDA_GPIO);
 }
 
-static inline void i2c_scl_low(void)
+static inline uint16_t i2c_sda_read(void)
 {
-    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1 << I2C_SCL_GPIO);
+    return ( GPIO_REG_READ(GPIO_IN_ADDRESS) & (1 << I2C_SDA_GPIO) );
 }
 
-static inline uint16_t i2c_scl_read(void)
+static inline void i2c_sda_low(void)
 {
-    return ( GPIO_REG_READ(GPIO_IN_ADDRESS) & (1 << I2C_SCL_GPIO) );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1 << I2C_SDA_GPIO);
 }
 
 static inline void i2c_scl_input(void)
@@ -55,9 +39,29 @@ static inline void i2c_scl_output(void)
     GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1 << I2C_SCL_GPIO);
 }
 
+static inline uint16_t i2c_scl_read(void)
+{
+    return ( GPIO_REG_READ(GPIO_IN_ADDRESS) & (1 << I2C_SCL_GPIO) );
+}
+
+static inline void i2c_scl_high(void)
+{
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, 1 << I2C_SCL_GPIO);
+
+    i2c_scl_input();
+    while(!i2c_scl_read()) {
+    }
+    i2c_scl_output();
+}
+
+static inline void i2c_scl_low(void)
+{
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, 1 << I2C_SCL_GPIO);
+}
+
 #define i2c_delay() \
 do {\
-    uint32_t temp1 = 7;\
+    uint32_t temp1 = 3;\
     asm volatile ("1:\n"\
         "addi.n %0, %0, -1\n"\
         "nop\n"\
@@ -86,7 +90,7 @@ uint8_t IRAM_ATTR i2c_start(uint8_t address, uint8_t rw)
     i2c_sda_high();
     i2c_delay();
 
-    i2c_scl_high(); // TODO: wait for SCL to be released
+    i2c_scl_high();
     i2c_delay();
 
     i2c_sda_low();
@@ -103,7 +107,7 @@ void IRAM_ATTR i2c_stop(void)
     i2c_sda_low();
     i2c_delay();
 
-    i2c_scl_high(); // TODO: wait for SCL to be released
+    i2c_scl_high();
     i2c_delay();
 
     i2c_sda_high();
