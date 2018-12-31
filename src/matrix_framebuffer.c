@@ -2,7 +2,10 @@
 #include <string.h>
 
 #include "matrix_framebuffer.h"
-#include "fonts.h"
+#include "i2c-master.h"
+#include "log.h"
+
+#define LOG_SYS LOG_SYS_MATRIX
 
 static void matrix_set_pixel_row(uint8_t n, uint8_t m)
 {
@@ -46,4 +49,17 @@ void matrix_blit(int16_t x0, int16_t y0, uint16_t w, uint16_t h, const uint8_t *
             }
         }
     }
+}
+
+int matrix_init(void)
+{
+    int ret = i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK;
+    if(!ret) {
+        fb_blit = matrix_blit;
+    } else {
+        LOG("No ACK");
+    }
+    i2c_stop();
+
+    return ret;
 }

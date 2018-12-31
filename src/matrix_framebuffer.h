@@ -3,6 +3,8 @@
 
 #include "framebuffer.h"
 
+#define MATRIX_I2C_ADDRESS 0x5B
+
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 32
 #define MATRIX_SIZE (MATRIX_WIDTH * MATRIX_HEIGHT / 8)
@@ -14,5 +16,7 @@ void matrix_clear(void);
 void matrix_splash(void);
 
 void matrix_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len);
+
+int matrix_init(void);
 
 #endif
