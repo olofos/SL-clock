@@ -20,4 +20,6 @@ struct icon {
     const uint8_t *data;
 };
 
+extern uint8_t *framebuffer;
+
 #endif

@@ -7,8 +7,6 @@
 #define OLED_HEIGHT 64
 #define OLED_SIZE (OLED_WIDTH * OLED_HEIGHT / 8)
 
-extern uint8_t *oled_framebuffer;
-
 void oled_set_pixel(int16_t x, int16_t y);
 void oled_display(void);
 
