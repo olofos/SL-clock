@@ -6,7 +6,7 @@
 #include <string.h>
 #include <cmocka.h>
 
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
 #include "log.h"
 
 //////// Constants used in tests ///////////////////////////////////////////////

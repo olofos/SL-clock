@@ -7,7 +7,7 @@
 
 #include "sh1106.h"
 #include "sh1106-cmd.h"
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
 
 #include "log.h"
 #define LOG_SYS LOG_SYS_SH1106

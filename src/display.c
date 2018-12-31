@@ -5,7 +5,7 @@
 #include "i2c-master.h"
 
 #include "sh1106.h"
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
 #include "fonts.h"
 #include "display.h"
 #include "display-message.h"

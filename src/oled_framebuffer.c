@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
 #include "fonts.h"
 #include "logo-paw-64x64.h"
 
