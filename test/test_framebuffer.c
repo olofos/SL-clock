@@ -11,7 +11,7 @@
 
 //////// Constants used in tests ///////////////////////////////////////////////
 
-#define BUFFER_MARGIN (FB_SIZE * 4)
+#define BUFFER_MARGIN (OLED_SIZE * 4)
 #define CANARY 0x55
 
 //////// Stubs needed by frambuffer.c //////////////////////////////////////////
@@ -30,13 +30,13 @@ void log_log(enum log_level level, enum log_system system, const char *fmt, ...)
 }
 
 
-void fb_display(void)
+void oled_display(void)
 {
 }
 
 //////// Global variables used for testing /////////////////////////////////////
 
-static uint8_t raw_buffer[FB_SIZE + 2 * BUFFER_MARGIN];
+static uint8_t raw_buffer[OLED_SIZE + 2 * BUFFER_MARGIN];
 
 static uint8_t icon8x8[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
@@ -54,7 +54,7 @@ static uint8_t icon17x17[3*17] = {
 
 static int setup(void **state)
 {
-    memset(raw_buffer, CANARY, FB_SIZE + 2 * BUFFER_MARGIN);
+    memset(raw_buffer, CANARY, OLED_SIZE + 2 * BUFFER_MARGIN);
     framebuffer = &raw_buffer[BUFFER_MARGIN];
 
     return 0;
@@ -62,7 +62,7 @@ static int setup(void **state)
 
 static void clear_framebuffer(void)
 {
-    memset(framebuffer, 0, FB_SIZE);
+    memset(framebuffer, 0, OLED_SIZE);
 }
 
 static void assert_no_drawing_outside_framebuffer(void)
@@ -71,24 +71,24 @@ static void assert_no_drawing_outside_framebuffer(void)
         assert_int_equal(CANARY, raw_buffer[i]);
     }
 
-    for(int i = BUFFER_MARGIN + FB_SIZE; i < 2 * BUFFER_MARGIN + FB_SIZE; i++) {
+    for(int i = BUFFER_MARGIN + OLED_SIZE; i < 2 * BUFFER_MARGIN + OLED_SIZE; i++) {
         assert_int_equal(CANARY, raw_buffer[i]);
     }
 }
 
 static void draw_icon_row_around_point(int x, int y, int w, int h, uint8_t *icon)
 {
-    fb_blit(x-32, y, w, h, icon, 0);
-    fb_blit(x-16, y, w, h, icon, 0);
-    fb_blit(x-8, y, w, h, icon, 0);
-    fb_blit(x-4, y, w, h, icon, 0);
-    fb_blit(x-1, y, w, h, icon, 0);
-    fb_blit(x, y, w, h, icon, 0);
-    fb_blit(x+1, y, w, h, icon, 0);
-    fb_blit(x+4, y, w, h, icon, 0);
-    fb_blit(x+8, y, w, h, icon, 0);
-    fb_blit(x+16, y, w, h, icon, 0);
-    fb_blit(x+32, y, w, h, icon, 0);
+    oled_blit(x-32, y, w, h, icon, 0);
+    oled_blit(x-16, y, w, h, icon, 0);
+    oled_blit(x-8, y, w, h, icon, 0);
+    oled_blit(x-4, y, w, h, icon, 0);
+    oled_blit(x-1, y, w, h, icon, 0);
+    oled_blit(x, y, w, h, icon, 0);
+    oled_blit(x+1, y, w, h, icon, 0);
+    oled_blit(x+4, y, w, h, icon, 0);
+    oled_blit(x+8, y, w, h, icon, 0);
+    oled_blit(x+16, y, w, h, icon, 0);
+    oled_blit(x+32, y, w, h, icon, 0);
 }
 
 static void draw_icon_around_point(int x, int y, int w, int h, uint8_t *icon)
@@ -108,18 +108,18 @@ static void draw_icon_around_point(int x, int y, int w, int h, uint8_t *icon)
 
 static int get_pixel(int x, int y)
 {
-    return framebuffer[x + FB_WIDTH * (y / 8)] & (1 << (y % 8));
+    return framebuffer[x + OLED_WIDTH * (y / 8)] & (1 << (y % 8));
 }
 
-static void test__fb_blit__should__draw_icon_in_the_correct_spot_helper(int x, int y, int w, int h, uint8_t *icon)
+static void test__oled_blit__should__draw_icon_in_the_correct_spot_helper(int x, int y, int w, int h, uint8_t *icon)
 {
     clear_framebuffer();
-    fb_set_pen(FB_NORMAL);
+    oled_set_pen(OLED_NORMAL);
 
-    fb_blit(x, y, w, h, icon, 0);
+    oled_blit(x, y, w, h, icon, 0);
 
-    for(int i = 0; i < FB_WIDTH; i++) {
-        for(int j = 0; j < FB_HEIGHT; j++) {
+    for(int i = 0; i < OLED_WIDTH; i++) {
+        for(int j = 0; j < OLED_HEIGHT; j++) {
             if((x <= i) && (i < x + w) && (y <= j) && (j < y + h)) {
                 assert_true(get_pixel(i, j));
             } else {
@@ -132,87 +132,87 @@ static void test__fb_blit__should__draw_icon_in_the_correct_spot_helper(int x, i
 
 //////// Tests /////////////////////////////////////////////////////////////////
 
-static void test__fb_clear__should__clear_framebuffer(void **state)
+static void test__oled_clear__should__clear_framebuffer(void **state)
 {
-    fb_clear();
+    oled_clear();
 
-    for(int i = 0; i < FB_SIZE; i++) {
+    for(int i = 0; i < OLED_SIZE; i++) {
         assert_int_equal(0x00, framebuffer[i]);
     }
 }
 
-static void test__fb_clear__should__not_draw_outside_framebuffer(void **state)
+static void test__oled_clear__should__not_draw_outside_framebuffer(void **state)
 {
-    fb_clear();
+    oled_clear();
 
     assert_no_drawing_outside_framebuffer();
 }
 
-static void test__fb_blit__should__not_draw_outside_framebuffer(void **state)
+static void test__oled_blit__should__not_draw_outside_framebuffer(void **state)
 {
     int w = 8;
     int h = 8;
     uint8_t *icon = icon8x8;
 
     draw_icon_around_point(0, 0, w, h, icon);
-    draw_icon_around_point(FB_WIDTH/2, 0, w, h, icon);
-    draw_icon_around_point(FB_WIDTH, 0, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH/2, 0, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH, 0, w, h, icon);
 
-    draw_icon_around_point(0, FB_HEIGHT / 2, w, h, icon);
-    draw_icon_around_point(FB_WIDTH/2, FB_HEIGHT / 2, w, h, icon);
-    draw_icon_around_point(FB_WIDTH, FB_HEIGHT / 2, w, h, icon);
+    draw_icon_around_point(0, OLED_HEIGHT / 2, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH/2, OLED_HEIGHT / 2, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH, OLED_HEIGHT / 2, w, h, icon);
 
-    draw_icon_around_point(0, FB_HEIGHT, w, h, icon);
-    draw_icon_around_point(FB_WIDTH/2, FB_HEIGHT, w, h, icon);
-    draw_icon_around_point(FB_WIDTH, FB_HEIGHT, w, h, icon);
+    draw_icon_around_point(0, OLED_HEIGHT, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH/2, OLED_HEIGHT, w, h, icon);
+    draw_icon_around_point(OLED_WIDTH, OLED_HEIGHT, w, h, icon);
 
     assert_no_drawing_outside_framebuffer();
 }
 
-static void test__fb_blit__should__draw_small_icon_in_the_correct_spot(void **state)
+static void test__oled_blit__should__draw_small_icon_in_the_correct_spot(void **state)
 {
     int w = 8;
     int h = 8;
     uint8_t *icon = icon8x8;
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, 0, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, 0, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, 0, w, h, icon);
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, FB_HEIGHT / 2, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, FB_HEIGHT / 2, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, OLED_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, OLED_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, OLED_HEIGHT / 2, w, h, icon);
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, FB_HEIGHT, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, FB_HEIGHT, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, OLED_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, OLED_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, OLED_HEIGHT, w, h, icon);
 }
 
-static void test__fb_blit__should__draw_large_icon_in_the_correct_spot(void **state)
+static void test__oled_blit__should__draw_large_icon_in_the_correct_spot(void **state)
 {
     int w = 17;
     int h = 17;
     uint8_t *icon = icon17x17;
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, 0, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, 0, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, 0, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, 0, w, h, icon);
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, FB_HEIGHT / 2, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, FB_HEIGHT / 2, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, OLED_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, OLED_HEIGHT / 2, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, OLED_HEIGHT / 2, w, h, icon);
 
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(0, FB_HEIGHT, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH/2, FB_HEIGHT, w, h, icon);
-    test__fb_blit__should__draw_icon_in_the_correct_spot_helper(FB_WIDTH, FB_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(0, OLED_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH/2, OLED_HEIGHT, w, h, icon);
+    test__oled_blit__should__draw_icon_in_the_correct_spot_helper(OLED_WIDTH, OLED_HEIGHT, w, h, icon);
 }
 
-const struct CMUnitTest tests_for_http_io_malloc_mock[] = {
-    cmocka_unit_test_setup(test__fb_clear__should__clear_framebuffer, setup),
-    cmocka_unit_test_setup(test__fb_clear__should__not_draw_outside_framebuffer, setup),
-    cmocka_unit_test_setup(test__fb_blit__should__not_draw_outside_framebuffer, setup),
-    cmocka_unit_test_setup(test__fb_blit__should__draw_small_icon_in_the_correct_spot, setup),
-    cmocka_unit_test_setup(test__fb_blit__should__draw_large_icon_in_the_correct_spot, setup),
+const struct CMUnitTest tests_for_oled[] = {
+    cmocka_unit_test_setup(test__oled_clear__should__clear_framebuffer, setup),
+    cmocka_unit_test_setup(test__oled_clear__should__not_draw_outside_framebuffer, setup),
+    cmocka_unit_test_setup(test__oled_blit__should__not_draw_outside_framebuffer, setup),
+    cmocka_unit_test_setup(test__oled_blit__should__draw_small_icon_in_the_correct_spot, setup),
+    cmocka_unit_test_setup(test__oled_blit__should__draw_large_icon_in_the_correct_spot, setup),
 };
 
 //////// Main //////////////////////////////////////////////////////////////////
@@ -220,7 +220,7 @@ const struct CMUnitTest tests_for_http_io_malloc_mock[] = {
 int main(void)
 {
     int fails = 0;
-    fails += cmocka_run_group_tests(tests_for_http_io_malloc_mock, NULL, NULL);
+    fails += cmocka_run_group_tests(tests_for_oled, NULL, NULL);
 
     return fails;
 }

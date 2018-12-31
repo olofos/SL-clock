@@ -14,16 +14,16 @@
 #include "log.h"
 #define LOG_SYS LOG_SYS_DISPLAY
 
-static enum fb_pen current_pen = FB_NORMAL;
+static enum oled_pen current_pen = OLED_NORMAL;
 
-void fb_set_pen(enum fb_pen pen)
+void oled_set_pen(enum oled_pen pen)
 {
     current_pen = pen;
 }
 
-static void fb_set_pixel_row(uint16_t n, uint8_t m)
+static void oled_set_pixel_row(uint16_t n, uint8_t m)
 {
-    if(current_pen == FB_NORMAL) {
+    if(current_pen == OLED_NORMAL) {
         framebuffer[n] |= m;
     } else {
         framebuffer[n] &= ~m;
@@ -31,25 +31,25 @@ static void fb_set_pixel_row(uint16_t n, uint8_t m)
 }
 
 
-void fb_set_pixel(int16_t x,int16_t y)
+void oled_set_pixel(int16_t x,int16_t y)
 {
-    if((0 <= x) && (x < FB_WIDTH) && (0 <= y) && (y < FB_HEIGHT))
+    if((0 <= x) && (x < OLED_WIDTH) && (0 <= y) && (y < OLED_HEIGHT))
     {
-        const uint16_t n = x + FB_WIDTH * (y / 8);
+        const uint16_t n = x + OLED_WIDTH * (y / 8);
         const uint8_t m = 1 << (y % 8);
 
-        fb_set_pixel_row(n, m);
+        oled_set_pixel_row(n, m);
     }
 }
 
-void fb_clear(void)
+void oled_clear(void)
 {
-    memset(framebuffer, 0, FB_SIZE);
+    memset(framebuffer, 0, OLED_SIZE);
 }
 
-void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
+void oled_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
 {
-    if(-h >= y || y > FB_HEIGHT) {
+    if(-h >= y || y > OLED_HEIGHT) {
         return;
     }
     uint8_t raster_height = 1 + ((h - 1) / 8);
@@ -65,42 +65,42 @@ void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, 
         uint8_t c = *data++;
 
         int16_t x_pos = x + (i / raster_height);
-        int16_t data_pos = x_pos + ((y >> 3) + (i % raster_height)) * FB_WIDTH;
+        int16_t data_pos = x_pos + ((y >> 3) + (i % raster_height)) * OLED_WIDTH;
 
-        if((0 <= x_pos) && (x_pos < FB_WIDTH))
+        if((0 <= x_pos) && (x_pos < OLED_WIDTH))
         {
-            if((0 <= data_pos) && (data_pos < FB_SIZE))
+            if((0 <= data_pos) && (data_pos < OLED_SIZE))
             {
-                fb_set_pixel_row(data_pos, c << offset);
+                oled_set_pixel_row(data_pos, c << offset);
             }
-            if((0 <= data_pos + FB_WIDTH) && (data_pos + FB_WIDTH < FB_SIZE))
+            if((0 <= data_pos + OLED_WIDTH) && (data_pos + OLED_WIDTH < OLED_SIZE))
             {
-                fb_set_pixel_row(data_pos + FB_WIDTH, c >> (8 - offset));
+                oled_set_pixel_row(data_pos + OLED_WIDTH, c >> (8 - offset));
             }
         }
     }
 }
 
-void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignment alignment)
+void oled_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum oled_alignment alignment)
 {
     if(!icon) {
         return;
     }
 
-    if(alignment & FB_ALIGN_CENTER_H)
+    if(alignment & OLED_ALIGN_CENTER_H)
     {
         x -= icon->width/2;
     }
 
-    if(alignment & FB_ALIGN_CENTER_V)
+    if(alignment & OLED_ALIGN_CENTER_V)
     {
         y -= icon->height / 2;
     }
 
-    fb_blit(x, y, icon->width, icon->height, icon->data, 0);
+    oled_blit(x, y, icon->width, icon->height, icon->data, 0);
 }
 
-void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const uint8_t *font_data, enum fb_alignment alignment)
+void oled_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const uint8_t *font_data, enum oled_alignment alignment)
 {
     const uint8_t char_height = font_data[FONT_HEIGHT_POS];
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
@@ -115,11 +115,11 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
         len = strlen(text);
     }
 
-    if(alignment & FB_ALIGN_CENTER_H) {
-        x -= fb_string_length(text, len, font_data) / 2;
+    if(alignment & OLED_ALIGN_CENTER_H) {
+        x -= oled_string_length(text, len, font_data) / 2;
     }
 
-    if(alignment & FB_ALIGN_CENTER_V) {
+    if(alignment & OLED_ALIGN_CENTER_V) {
         y -= char_height / 2;
     }
 
@@ -137,7 +137,7 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
 
             if(char_index != 0xFFFF) {
                 const uint8_t *char_p = font_data + FONT_JUMPTABLE_START + jump_table_size + char_index;
-                fb_blit(x, y, char_width, char_height, char_p, char_bytes);
+                oled_blit(x, y, char_width, char_height, char_p, char_bytes);
             }
 
             x += char_width;
@@ -145,7 +145,7 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
     }
 }
 
-uint16_t fb_string_length(const char *text, uint8_t n, const uint8_t *font_data)
+uint16_t oled_string_length(const char *text, uint8_t n, const uint8_t *font_data)
 {
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
     const uint8_t char_num = font_data[FONT_CHAR_NUM_POS];
@@ -174,7 +174,7 @@ static uint8_t reverse(uint8_t b)
     return b;
 }
 
-struct icon *fb_load_icon_pbm(const char *filename)
+struct icon *oled_load_icon_pbm(const char *filename)
 {
     LOG("Loading icon from file %s", filename);
 
@@ -254,7 +254,7 @@ struct icon *fb_load_icon_pbm(const char *filename)
     return icon;
 }
 
-void fb_free_icon(struct icon *icon)
+void oled_free_icon(struct icon *icon)
 {
     if(icon)
     {
@@ -266,21 +266,21 @@ void fb_free_icon(struct icon *icon)
     }
 }
 
-void fb_splash(void)
+void oled_splash(void)
 {
-    fb_clear();
+    oled_clear();
 
     for(int y = 0; y < 8; y++)
     {
-        fb_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
+        oled_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
     }
 
-    fb_display();
+    oled_display();
 }
 
-static void fb_draw_line_v(int16_t x, int16_t y1, int16_t y2)
+static void oled_draw_line_v(int16_t x, int16_t y1, int16_t y2)
 {
-    if((0 > x) || (x >= FB_WIDTH)) {
+    if((0 > x) || (x >= OLED_WIDTH)) {
         return;
     }
 
@@ -288,8 +288,8 @@ static void fb_draw_line_v(int16_t x, int16_t y1, int16_t y2)
         y1 = 0;
     }
 
-    if(y2 >= FB_HEIGHT) {
-        y2 = FB_HEIGHT - 1;
+    if(y2 >= OLED_HEIGHT) {
+        y2 = OLED_HEIGHT - 1;
     }
 
     if(y2 < y1) {
@@ -303,20 +303,20 @@ static void fb_draw_line_v(int16_t x, int16_t y1, int16_t y2)
     const uint8_t m2 = 0xFF >> (7 - (y2 & 0x07));
 
     if(site2 > site1) {
-        fb_set_pixel_row(x + site1 * FB_WIDTH, m1);
-        fb_set_pixel_row(x + site2 * FB_WIDTH, m2);
+        oled_set_pixel_row(x + site1 * OLED_WIDTH, m1);
+        oled_set_pixel_row(x + site2 * OLED_WIDTH, m2);
 
         for(uint8_t s = site1 + 1; s < site2; s++) {
-            fb_set_pixel_row(x + s * FB_WIDTH, 0xFF);
+            oled_set_pixel_row(x + s * OLED_WIDTH, 0xFF);
         }
     } else {
-        fb_set_pixel_row(x + site1 * FB_WIDTH, m1 & m2);
+        oled_set_pixel_row(x + site1 * OLED_WIDTH, m1 & m2);
     }
 }
 
-static void fb_draw_line_h(int16_t x1, int16_t x2, int16_t y)
+static void oled_draw_line_h(int16_t x1, int16_t x2, int16_t y)
 {
-    if((0 > y) || (y >= FB_HEIGHT)) {
+    if((0 > y) || (y >= OLED_HEIGHT)) {
         return;
     }
 
@@ -324,8 +324,8 @@ static void fb_draw_line_h(int16_t x1, int16_t x2, int16_t y)
         x1 = 0;
     }
 
-    if(x2 >= FB_WIDTH) {
-        x2 = FB_WIDTH - 1;
+    if(x2 >= OLED_WIDTH) {
+        x2 = OLED_WIDTH - 1;
     }
 
     if(x2 < x1) {
@@ -336,7 +336,7 @@ static void fb_draw_line_h(int16_t x1, int16_t x2, int16_t y)
     uint8_t m = 1 << (y & 0x07);
 
     for(uint8_t x = x1; x <= x2; x++) {
-        fb_set_pixel_row(x + s * FB_WIDTH, m);
+        oled_set_pixel_row(x + s * OLED_WIDTH, m);
     }
 }
 
@@ -350,50 +350,50 @@ static const uint8_t corner_fill_nw[] = { 0b11100000, 0b11111000, 0b11111100, 0b
 static const uint8_t corner_fill_se[] = { 0b11111111, 0b11111111, 0b11111111, 0b01111111, 0b01111111, 0b00111111, 0b00011111, 0b00000111, };
 static const uint8_t corner_fill_ne[] = { 0b11111111, 0b11111111, 0b11111111, 0b11111110, 0b11111110, 0b11111100, 0b11111000, 0b11100000, };
 
-void fb_draw_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
+void oled_draw_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
 {
-    fb_draw_line_h(x,x+w-1,y);
-    fb_draw_line_h(x,x+w-1,y+h-1);
+    oled_draw_line_h(x,x+w-1,y);
+    oled_draw_line_h(x,x+w-1,y+h-1);
 
-    fb_draw_line_v(x,    y,y+h-1);
-    fb_draw_line_v(x+w-1,y,y+h-1);
+    oled_draw_line_v(x,    y,y+h-1);
+    oled_draw_line_v(x+w-1,y,y+h-1);
 }
 
 
-void fb_draw_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
+void oled_draw_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
 {
-    fb_blit(x,     y,     8, 8, corner_nw, 0);
-    fb_blit(x+w-8, y,     8, 8, corner_ne, 0);
-    fb_blit(x,     y+h-8, 8, 8, corner_sw, 0);
-    fb_blit(x+w-8, y+h-8, 8, 8, corner_se, 0);
+    oled_blit(x,     y,     8, 8, corner_nw, 0);
+    oled_blit(x+w-8, y,     8, 8, corner_ne, 0);
+    oled_blit(x,     y+h-8, 8, 8, corner_sw, 0);
+    oled_blit(x+w-8, y+h-8, 8, 8, corner_se, 0);
 
-    fb_draw_line_h(x+8,x+w-8-1,y);
-    fb_draw_line_h(x+8,x+w-8-1,y+h-1);
+    oled_draw_line_h(x+8,x+w-8-1,y);
+    oled_draw_line_h(x+8,x+w-8-1,y+h-1);
 
-    fb_draw_line_v(x,    y+8,y+h-8-1);
-    fb_draw_line_v(x+w-1,y+8,y+h-8-1);
+    oled_draw_line_v(x,    y+8,y+h-8-1);
+    oled_draw_line_v(x+w-1,y+8,y+h-8-1);
 }
 
-void fb_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
+void oled_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
 {
     for(uint16_t i = 0; i < w; i++) {
-        fb_draw_line_v(x + i, y, y + h - 1);
+        oled_draw_line_v(x + i, y, y + h - 1);
     }
 }
 
-void fb_fill_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
+void oled_fill_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
 {
-    fb_blit(x,     y,     8, 8, corner_fill_nw, 0);
-    fb_blit(x+w-8, y,     8, 8, corner_fill_ne, 0);
-    fb_blit(x,     y+h-8, 8, 8, corner_fill_sw, 0);
-    fb_blit(x+w-8, y+h-8, 8, 8, corner_fill_se, 0);
+    oled_blit(x,     y,     8, 8, corner_fill_nw, 0);
+    oled_blit(x+w-8, y,     8, 8, corner_fill_ne, 0);
+    oled_blit(x,     y+h-8, 8, 8, corner_fill_sw, 0);
+    oled_blit(x+w-8, y+h-8, 8, 8, corner_fill_se, 0);
 
     for(uint8_t i = 0; i < 8; i++) {
-        fb_draw_line_v(x+i,     y+8, y+h-9);
-        fb_draw_line_v(x+w-8+i, y+8, y+h-9);
+        oled_draw_line_v(x+i,     y+8, y+h-9);
+        oled_draw_line_v(x+w-8+i, y+8, y+h-9);
     }
 
     for(uint16_t i = x + 8; i < x + w - 8; i++) {
-        fb_draw_line_v(i, y, y+h-1);
+        oled_draw_line_v(i, y, y+h-1);
     }
 }

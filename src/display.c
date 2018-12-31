@@ -89,7 +89,7 @@ struct journey_single_display_state journey_single_display_state;
 
 static uint8_t animation_running;
 
-static struct message_state message_state = { .state = STATE_NO_DISPLAY, .current = DISPLAY_MESSAGE_NONE, .next = DISPLAY_MESSAGE_NONE, .y = 2*FB_HEIGHT };
+static struct message_state message_state = { .state = STATE_NO_DISPLAY, .current = DISPLAY_MESSAGE_NONE, .next = DISPLAY_MESSAGE_NONE, .y = 2*OLED_HEIGHT };
 
 xQueueHandle display_message_queue;
 
@@ -110,10 +110,10 @@ static void draw_row(int16_t x, int16_t y, const struct icon *icon, const time_t
     }
 
     if(icon) {
-        fb_draw_icon(X_OFFSET + x, y, icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        oled_draw_icon(X_OFFSET + x, y, icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
     }
 
-    fb_draw_string(X_OFFSET + x + 55, y, str, 0, Monospaced_bold_16, FB_ALIGN_CENTER_V);
+    oled_draw_string(X_OFFSET + x + 55, y, str, 0, Monospaced_bold_16, OLED_ALIGN_CENTER_V);
 }
 
 static void update_journey_display_state(struct journey_display_state *state, const time_t *next)
@@ -274,22 +274,22 @@ static void display_init()
         LOG("SH1106 is not responding");
         vTaskDelayMs(250);
     }
-    fb_splash();
+    oled_splash();
 
-    clock_icon = fb_load_icon_pbm("/icons/clock.pbm");
-    noclock_icon = fb_load_icon_pbm("/icons/noclock.pbm");
+    clock_icon = oled_load_icon_pbm("/icons/clock.pbm");
+    noclock_icon = oled_load_icon_pbm("/icons/noclock.pbm");
 
-    nowifi_icons[0] = fb_load_icon_pbm("/icons/nowifi1.pbm");
-    nowifi_icons[1] = fb_load_icon_pbm("/icons/nowifi2.pbm");
-    nowifi_icons[2] = fb_load_icon_pbm("/icons/nowifi3.pbm");
-    nowifi_icons[3] = fb_load_icon_pbm("/icons/nowifi4.pbm");
+    nowifi_icons[0] = oled_load_icon_pbm("/icons/nowifi1.pbm");
+    nowifi_icons[1] = oled_load_icon_pbm("/icons/nowifi2.pbm");
+    nowifi_icons[2] = oled_load_icon_pbm("/icons/nowifi3.pbm");
+    nowifi_icons[3] = oled_load_icon_pbm("/icons/nowifi4.pbm");
 
     journey_icons[TRANSPORT_MODE_UNKNOWN] = 0;
-    journey_icons[TRANSPORT_MODE_BUS] = fb_load_icon_pbm("/icons/bus.pbm");
-    journey_icons[TRANSPORT_MODE_METRO] = fb_load_icon_pbm("/icons/subway.pbm");
-    journey_icons[TRANSPORT_MODE_TRAIN] = fb_load_icon_pbm("/icons/train.pbm");
-    journey_icons[TRANSPORT_MODE_TRAM] = fb_load_icon_pbm("/icons/tram.pbm");
-    journey_icons[TRANSPORT_MODE_SHIP] = fb_load_icon_pbm("/icons/boat.pbm");
+    journey_icons[TRANSPORT_MODE_BUS] = oled_load_icon_pbm("/icons/bus.pbm");
+    journey_icons[TRANSPORT_MODE_METRO] = oled_load_icon_pbm("/icons/subway.pbm");
+    journey_icons[TRANSPORT_MODE_TRAIN] = oled_load_icon_pbm("/icons/train.pbm");
+    journey_icons[TRANSPORT_MODE_TRAM] = oled_load_icon_pbm("/icons/tram.pbm");
+    journey_icons[TRANSPORT_MODE_SHIP] = oled_load_icon_pbm("/icons/boat.pbm");
 
     journey_display_states[0] = (struct journey_display_state) { .x_shift = 0, .y_shift = Y_JOURNEY_1, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = 0 };
     journey_display_states[1] = (struct journey_display_state) { .x_shift = 0, .y_shift = Y_JOURNEY_2, .state = STATE_DISPLAY, .current = 0, .next = 0, .icon = 0 };
@@ -302,7 +302,7 @@ static void display_init()
 static void draw_journey_row(const struct journey_display_state *state, const struct journey *journey)
 {
     draw_row(state->x_shift, state->y_shift, state->icon, &state->current, 0);
-    fb_draw_string(X_OFFSET_LINE + state->x_shift, state->y_shift, journey->line, 0, font_3x5, FB_ALIGN_CENTER_V);
+    oled_draw_string(X_OFFSET_LINE + state->x_shift, state->y_shift, journey->line, 0, font_3x5, OLED_ALIGN_CENTER_V);
 }
 
 static void draw_journey_single(struct journey_single_display_state *state)
@@ -312,31 +312,31 @@ static void draw_journey_single(struct journey_single_display_state *state)
     case STATE_SINGLE_DISPLAY:
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
-        fb_draw_icon(X_OFFSET, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-        fb_draw_string(X_OFFSET_LINE, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
+        oled_draw_icon(X_OFFSET, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
+        oled_draw_string(X_OFFSET_LINE, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, OLED_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_BOTH_IN:
     case STATE_SINGLE_SHIFT_BOTH_OUT:
         draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
-        fb_draw_icon(X_OFFSET + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-        fb_draw_string(X_OFFSET_LINE + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
+        oled_draw_icon(X_OFFSET + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, state->icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
+        oled_draw_string(X_OFFSET_LINE + state->x_shift, (Y_JOURNEY_1 + Y_JOURNEY_2)/2, journies[0].line, 0, font_3x5, OLED_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_ICON_UP_OUT:
     case STATE_SINGLE_SHIFT_ICON_UP_IN:
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
-        fb_draw_icon(X_OFFSET, state->y_shift, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-        fb_draw_string(X_OFFSET_LINE, state->y_shift, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
+        oled_draw_icon(X_OFFSET, state->y_shift, state->icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
+        oled_draw_string(X_OFFSET_LINE, state->y_shift, journies[0].line, 0, font_3x5, OLED_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_ONE_OUT:
         draw_row(state->x_shift, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(0, Y_JOURNEY_2, 0, &state->current[1], 0);
-        fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_1, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-        fb_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_1, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
+        oled_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_1, state->icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
+        oled_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_1, journies[0].line, 0, font_3x5, OLED_ALIGN_CENTER_V);
         break;
 
     case STATE_SINGLE_SHIFT_JOURNEY_UP:
@@ -346,8 +346,8 @@ static void draw_journey_single(struct journey_single_display_state *state)
     case STATE_SINGLE_SHIFT_ONE_IN:
         draw_row(0, Y_JOURNEY_1, 0, &state->current[0], 0);
         draw_row(state->x_shift, Y_JOURNEY_2, 0, &state->current[1], 0);
-        fb_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_2, state->icon, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
-        fb_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_2, journies[0].line, 0, font_3x5, FB_ALIGN_CENTER_V);
+        oled_draw_icon(X_OFFSET + state->x_shift, Y_JOURNEY_2, state->icon, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
+        oled_draw_string(X_OFFSET_LINE + state->x_shift, Y_JOURNEY_2, journies[0].line, 0, font_3x5, OLED_ALIGN_CENTER_V);
         break;
     }
 }
@@ -407,7 +407,7 @@ static void draw_message_box(int16_t x, int16_t y, const char *text, const uint8
     uint8_t w = 0;
     s = text;
     for(uint8_t i = 0; i < num_lines; i++)  {
-        uint8_t lw = fb_string_length(s, line_len[i], font_data);
+        uint8_t lw = oled_string_length(s, line_len[i], font_data);
         if(lw > w) {
             w = lw;
         }
@@ -418,14 +418,14 @@ static void draw_message_box(int16_t x, int16_t y, const char *text, const uint8
     x -= w/2;
     y -= h/2;
 
-    fb_set_pen(FB_INVERSE);
-    fb_fill_rect_round(x-1-4, y-1, w+2+8, h+2);
-    fb_set_pen(FB_NORMAL);
-    fb_draw_rect_round(x-4, y, w+8, h);
+    oled_set_pen(OLED_INVERSE);
+    oled_fill_rect_round(x-1-4, y-1, w+2+8, h+2);
+    oled_set_pen(OLED_NORMAL);
+    oled_draw_rect_round(x-4, y, w+8, h);
 
     s = text;
     for(uint8_t i = 0; i < num_lines; i++)  {
-        fb_draw_string(FB_WIDTH/2, y + line_h * i + line_h / 2, s, line_len[i], font_data, FB_ALIGN_CENTER_V | FB_ALIGN_CENTER_H);
+        oled_draw_string(OLED_WIDTH/2, y + line_h * i + line_h / 2, s, line_len[i], font_data, OLED_ALIGN_CENTER_V | OLED_ALIGN_CENTER_H);
         s += line_len[i] + 1;
     }
 }
@@ -446,19 +446,19 @@ static void show_message_animation(void)
         break;
 
     case STATE_SHIFT_IN:
-        state->y = 2*FB_HEIGHT - (xTaskGetTickCount() - state->anim_start) / 2;
+        state->y = 2*OLED_HEIGHT - (xTaskGetTickCount() - state->anim_start) / 2;
 
-        if(state->y <= FB_HEIGHT/2) {
-            state->y = FB_HEIGHT/2;
+        if(state->y <= OLED_HEIGHT/2) {
+            state->y = OLED_HEIGHT/2;
             state->state = STATE_DISPLAY;
             animation_running--;
         }
     break;
 
     case STATE_SHIFT_OUT:
-        state->y = FB_HEIGHT/2 - (xTaskGetTickCount() - state->anim_start) / 2;
+        state->y = OLED_HEIGHT/2 - (xTaskGetTickCount() - state->anim_start) / 2;
 
-        if(state->y <= -FB_HEIGHT) {
+        if(state->y <= -OLED_HEIGHT) {
             state->state = STATE_NO_DISPLAY;
             animation_running--;
 
@@ -471,7 +471,7 @@ static void show_message_animation(void)
          if(state->next != DISPLAY_MESSAGE_NONE) {
              state->state = STATE_SHIFT_IN;
              state->anim_start = xTaskGetTickCount();
-             state->y = 2*FB_HEIGHT;
+             state->y = 2*OLED_HEIGHT;
              animation_running++;
 
              state->current = state->next;
@@ -480,7 +480,7 @@ static void show_message_animation(void)
     }
 
     if(message_state.state != STATE_NO_DISPLAY) {
-        draw_message_box(FB_WIDTH/2, state->y, display_get_message(state->current), ArialMT_Plain_10);
+        draw_message_box(OLED_WIDTH/2, state->y, display_get_message(state->current), ArialMT_Plain_10);
     }
 }
 
@@ -490,9 +490,9 @@ void display_task(void *pvParameters)
 
     for(;;)
     {
-        fb_clear();
+        oled_clear();
 
-        fb_set_pen(FB_NORMAL);
+        oled_set_pen(OLED_NORMAL);
 
         draw_clock_row();
 
@@ -529,7 +529,7 @@ void display_task(void *pvParameters)
 
         show_message_animation();
 
-        fb_display();
+        oled_display();
 
         if(animation_running) {
             vTaskDelayMs(25);
