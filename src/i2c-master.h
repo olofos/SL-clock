@@ -21,4 +21,7 @@ void i2c_stop(void);
 uint8_t i2c_write_byte(uint8_t data);
 uint16_t i2c_write(const uint8_t *data, uint16_t len);
 
+uint8_t i2c_write_byte_lsb_first(uint8_t data);
+uint16_t i2c_write_lsb_first(const uint8_t *data, uint16_t len);
+
 #endif

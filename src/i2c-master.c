@@ -110,28 +110,26 @@ void IRAM_ATTR i2c_stop(void)
     i2c_delay();
 }
 
-uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
+static void i2c_write_bit(uint8_t bit)
 {
-    for(int i = 0; i < 8; i++)
-    {
-        if(data & 0x80) {
-            i2c_sda_high();
-        } else {
-            i2c_sda_low();
-        }
-
-        i2c_delay();
-
-        i2c_scl_high();
-        i2c_delay();
-        i2c_delay();
-
-        i2c_scl_low();
-        i2c_delay();
-
-        data <<= 1;
+    if(bit) {
+        i2c_sda_high();
+    } else {
+        i2c_sda_low();
     }
 
+    i2c_delay();
+
+    i2c_scl_high();
+    i2c_delay();
+    i2c_delay();
+
+    i2c_scl_low();
+    i2c_delay();
+}
+
+static uint8_t i2c_read_ack(void)
+{
     i2c_sda_input();
 
     i2c_delay();
@@ -152,11 +150,46 @@ uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
     return ack;
 }
 
+uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
+{
+    for(int i = 0; i < 8; i++)
+    {
+        i2c_write_bit(data & 0x80);
+        data <<= 1;
+    }
+
+    return i2c_read_ack();
+}
+
 uint16_t IRAM_ATTR i2c_write(const uint8_t *data, uint16_t len)
 {
     uint8_t status = I2C_ACK;
     while((len > 0) && status) {
         status = i2c_write_byte(*data++);
+        len--;
+    }
+
+    return len;
+}
+
+
+uint8_t IRAM_ATTR i2c_write_byte_lsb_first(uint8_t data)
+{
+    for(int i = 0; i < 8; i++)
+    {
+        i2c_write_bit(data & 0x01);
+
+        data >>= 1;
+    }
+
+    return i2c_read_ack();
+}
+
+uint16_t IRAM_ATTR i2c_write_lsb_first(const uint8_t *data, uint16_t len)
+{
+    uint8_t status = I2C_ACK;
+    while((len > 0) && status) {
+        status = i2c_write_byte_lsb_first(*data++);
         len--;
     }
 
