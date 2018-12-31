@@ -14,16 +14,16 @@
 #include "log.h"
 #define LOG_SYS LOG_SYS_DISPLAY
 
-static enum oled_pen current_pen = OLED_NORMAL;
+static enum fb_pen current_pen = FB_NORMAL;
 
-void oled_set_pen(enum oled_pen pen)
+void oled_set_pen(enum fb_pen pen)
 {
     current_pen = pen;
 }
 
 static void oled_set_pixel_row(uint16_t n, uint8_t m)
 {
-    if(current_pen == OLED_NORMAL) {
+    if(current_pen == FB_NORMAL) {
         oled_framebuffer[n] |= m;
     } else {
         oled_framebuffer[n] &= ~m;
@@ -81,18 +81,18 @@ void oled_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data
     }
 }
 
-void oled_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum oled_alignment alignment)
+void oled_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignment alignment)
 {
     if(!icon) {
         return;
     }
 
-    if(alignment & OLED_ALIGN_CENTER_H)
+    if(alignment & FB_ALIGN_CENTER_H)
     {
         x -= icon->width/2;
     }
 
-    if(alignment & OLED_ALIGN_CENTER_V)
+    if(alignment & FB_ALIGN_CENTER_V)
     {
         y -= icon->height / 2;
     }
@@ -100,7 +100,7 @@ void oled_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum oled_ali
     oled_blit(x, y, icon->width, icon->height, icon->data, 0);
 }
 
-void oled_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const uint8_t *font_data, enum oled_alignment alignment)
+void oled_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const uint8_t *font_data, enum fb_alignment alignment)
 {
     const uint8_t char_height = font_data[FONT_HEIGHT_POS];
     const uint8_t first_char = font_data[FONT_FIRST_CHAR_POS];
@@ -115,11 +115,11 @@ void oled_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const
         len = strlen(text);
     }
 
-    if(alignment & OLED_ALIGN_CENTER_H) {
+    if(alignment & FB_ALIGN_CENTER_H) {
         x -= oled_string_length(text, len, font_data) / 2;
     }
 
-    if(alignment & OLED_ALIGN_CENTER_V) {
+    if(alignment & FB_ALIGN_CENTER_V) {
         y -= char_height / 2;
     }
 

@@ -114,7 +114,7 @@ static int get_pixel(int x, int y)
 static void test__oled_blit__should__draw_icon_in_the_correct_spot_helper(int x, int y, int w, int h, uint8_t *icon)
 {
     clear_framebuffer();
-    oled_set_pen(OLED_NORMAL);
+    oled_set_pen(FB_NORMAL);
 
     oled_blit(x, y, w, h, icon, 0);
 
