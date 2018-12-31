@@ -57,7 +57,7 @@ static inline void i2c_scl_output(void)
 
 #define i2c_delay() \
 do {\
-    uint32_t temp1 = 3;\
+    uint32_t temp1 = 7;\
     asm volatile ("1:\n"\
         "addi.n %0, %0, -1\n"\
         "nop\n"\
