@@ -36,11 +36,16 @@ void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignme
     if(alignment & FB_ALIGN_CENTER_H)
     {
         x -= icon->width/2;
+    } else if(alignment & FB_ALIGN_END_H) {
+        x -= icon->width;
     }
 
     if(alignment & FB_ALIGN_CENTER_V)
     {
         y -= icon->height / 2;
+    } else if(alignment & FB_ALIGN_END_V)
+    {
+        y -= icon->height;
     }
 
     fb_blit(x, y, icon->width, icon->height, icon->data, 0);
@@ -63,9 +68,13 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
 
     if(alignment & FB_ALIGN_CENTER_H) {
         x -= fb_string_length(text, len, font_data) / 2;
+    } else if(alignment & FB_ALIGN_END_H) {
+        x -= fb_string_length(text, len, font_data);
     }
 
     if(alignment & FB_ALIGN_CENTER_V) {
+        y -= char_height / 2;
+    } else if(alignment & FB_ALIGN_END_V) {
         y -= char_height / 2;
     }
 

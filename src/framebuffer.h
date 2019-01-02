@@ -3,9 +3,11 @@
 
 enum fb_alignment
 {
-    FB_ALIGN_NONE = 0,
+    FB_ALIGN_NONE     = 0,
     FB_ALIGN_CENTER_H = 0x01,
-    FB_ALIGN_CENTER_V = 0x02
+    FB_ALIGN_CENTER_V = 0x02,
+    FB_ALIGN_END_H    = 0x04,
+    FB_ALIGN_END_V    = 0x08,
 };
 
 enum fb_pen

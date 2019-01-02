@@ -23,5 +23,8 @@ extern const uint8_t ArialMT_Plain_24[];
 extern const uint8_t Monospaced_bold_16[];
 extern const uint8_t Monospaced_plain_28[];
 extern const uint8_t font_3x5[];
+extern const uint8_t font_5x7[];
+extern const uint8_t font_6x12[];
+
 
 #endif
