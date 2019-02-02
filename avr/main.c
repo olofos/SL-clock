@@ -283,6 +283,7 @@ int main(void)
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
+            MAX7219_init(CS1 | CS2 | CS3 | CS4);
             fb_show();
             GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
         }
