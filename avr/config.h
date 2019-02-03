@@ -51,5 +51,6 @@
 #define PIN_LDR_DDR DDRA
 #define PIN_LDR_PIN PINA
 #define PIN_LDR_PORT PORTA
+#define PIN_LDR_ADC 7
 
 #endif

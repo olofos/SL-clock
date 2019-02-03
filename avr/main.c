@@ -152,12 +152,12 @@ void MAX7219_blank(uint8_t cs)
     }
 }
 
-void MAX7219_init(uint8_t cs)
+void MAX7219_init(uint8_t cs, uint8_t intensity)
 {
     MAX7219_cmd(MAX7219_REG_SCANLIMIT, 0x07, cs);
     MAX7219_cmd(MAX7219_REG_DECODEMODE, 0x00, cs);
     MAX7219_cmd(MAX7219_REG_DISPLAYTEST, 0x00, cs);
-    MAX7219_cmd(MAX7219_REG_INTENSITY, 0x07, cs);
+    MAX7219_cmd(MAX7219_REG_INTENSITY, intensity, cs);
     MAX7219_cmd(MAX7219_REG_SHUTDOWN, 0x01, cs);
 }
 
@@ -268,13 +268,47 @@ void i2c_init(void)
     TWSCRA = _BV(TWSHE) | _BV(TWDIE) | _BV(TWASIE) | _BV(TWEN) | _BV(TWSIE);
 }
 
+void adc_init(void)
+{
+    ADMUXA = PIN_LDR_ADC;
+    ADMUXB = _BV(REFS2) | _BV(REFS1);
+    DIDR0 = _BV(PIN_LDR_ADC);
+    ADCSRB = _BV(ADTS2) | _BV(ADTS1);
+    ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS1);
+}
+
+void timer1_init(void)
+{
+    TCCR1A = 0;
+    TCCR1B = _BV(CS11) | _BV(CS10);
+    TIMSK1 = _BV(TOIE1);
+    TCNT1 = 0;
+}
+
+volatile uint16_t adc_result;
+
+// TODO: Implement a bit of hysteresis
+uint8_t calc_intensity(uint16_t adc_result)
+{
+    uint8_t result = 0;
+    for(int i = 0; i < 8; i++) {
+        if(adc_result & (1 << (11 - i))) {
+            result = 7 - i;
+            break;
+        }
+    }
+    return result;
+}
+
 int main(void)
 {
     IO_init();
     SPI_init();
     i2c_init();
+    timer1_init();
+    adc_init();
 
-    MAX7219_init(CS1 | CS2 | CS3 | CS4);
+    MAX7219_init(CS1 | CS2 | CS3 | CS4, 0);
     MAX7219_blank(CS1 | CS2 | CS3 | CS4);
 
     GPIOR0 |= FLAG_FB_UPDATED;
@@ -283,7 +317,7 @@ int main(void)
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
-            MAX7219_init(CS1 | CS2 | CS3 | CS4);
+            MAX7219_init(CS1 | CS2 | CS3 | CS4, calc_intensity(adc_result));
             fb_show();
             GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
         }
@@ -294,7 +328,6 @@ int main(void)
 #define TW_CMD_NACK (_BV(TWAA) | _BV(TWCMD1) | _BV(TWCMD0))
 #define TW_CMD_ACK_WAIT_START (_BV(TWCMD1))
 #define TW_CMD_NACK_WAIT_START (_BV(TWAA) | _BV(TWCMD1))
-
 
 
 ISR(TWI_SLAVE_vect)
@@ -329,3 +362,10 @@ ISR(TWI_SLAVE_vect)
         }
     }
 }
+
+ISR(ADC_vect)
+{
+    adc_result = ADC;
+}
+
+EMPTY_INTERRUPT(TIMER1_OVF_vect);
