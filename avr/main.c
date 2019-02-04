@@ -273,19 +273,9 @@ void adc_init(void)
     ADMUXA = PIN_LDR_ADC;
     ADMUXB = _BV(REFS2) | _BV(REFS1);
     DIDR0 = _BV(PIN_LDR_ADC);
-    ADCSRB = _BV(ADTS2) | _BV(ADTS1);
-    ADCSRA = _BV(ADEN) | _BV(ADIE) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS1);
+    ADCSRB = 0;
+    ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS1);
 }
-
-void timer1_init(void)
-{
-    TCCR1A = 0;
-    TCCR1B = _BV(CS11) | _BV(CS10);
-    TIMSK1 = _BV(TOIE1);
-    TCNT1 = 0;
-}
-
-volatile uint16_t adc_result;
 
 #define NUM_LIGHT_LEVELS 8
 
@@ -316,7 +306,6 @@ int main(void)
     IO_init();
     SPI_init();
     i2c_init();
-    timer1_init();
     adc_init();
 
     MAX7219_init(CS1 | CS2 | CS3 | CS4, 0);
@@ -328,7 +317,7 @@ int main(void)
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
-            MAX7219_init(CS1 | CS2 | CS3 | CS4, calc_intensity(adc_result));
+            MAX7219_init(CS1 | CS2 | CS3 | CS4, calc_intensity(ADC));
             fb_show();
             GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
         }
@@ -373,10 +362,3 @@ ISR(TWI_SLAVE_vect)
         }
     }
 }
-
-ISR(ADC_vect)
-{
-    adc_result = ADC;
-}
-
-EMPTY_INTERRUPT(TIMER1_OVF_vect);
