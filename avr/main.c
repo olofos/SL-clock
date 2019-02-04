@@ -287,17 +287,28 @@ void timer1_init(void)
 
 volatile uint16_t adc_result;
 
-// TODO: Implement a bit of hysteresis
+#define NUM_LIGHT_LEVELS 8
+
 uint8_t calc_intensity(uint16_t adc_result)
 {
-    uint8_t result = 0;
-    for(int i = 0; i < 8; i++) {
-        if(adc_result & (1 << (11 - i))) {
-            result = 7 - i;
-            break;
-        }
+    static uint8_t current_light_level = 0;
+
+    static const uint16_t light_tab_low[NUM_LIGHT_LEVELS] = {
+        0, 8, 16, 32, 64, 128, 256, 512
+    };
+
+    static const uint16_t light_tab_high[NUM_LIGHT_LEVELS] = {
+        12, 23, 46, 91, 182, 363, 725, 1023
+    };
+
+    if(adc_result < light_tab_low[current_light_level]) {
+        current_light_level--;
     }
-    return result;
+    if(adc_result > light_tab_high[current_light_level]) {
+        current_light_level++;
+    }
+
+    return current_light_level;
 }
 
 int main(void)
