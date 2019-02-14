@@ -114,7 +114,7 @@ void IRAM_ATTR i2c_stop(void)
     i2c_delay();
 }
 
-static void i2c_write_bit(uint8_t bit)
+static void IRAM_ATTR i2c_write_bit(uint8_t bit)
 {
     if(bit) {
         i2c_sda_high();
@@ -132,7 +132,7 @@ static void i2c_write_bit(uint8_t bit)
     i2c_delay();
 }
 
-static uint8_t i2c_read_ack(void)
+static uint8_t IRAM_ATTR i2c_read_ack(void)
 {
     i2c_sda_input();
 
