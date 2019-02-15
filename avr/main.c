@@ -10,6 +10,11 @@
 #define FLAG_FB_UPDATED 0x02
 
 uint8_t fb_write_index;
+uint8_t read_index;
+
+volatile uint8_t prev_adc_value_hi;
+volatile uint8_t prev_adc_value_lo;
+volatile uint8_t prev_intensity;
 
 #define I2C_ADDRESS 0x5B
 
@@ -317,8 +322,16 @@ int main(void)
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
-            MAX7219_init(CS1 | CS2 | CS3 | CS4, calc_intensity(ADC));
+            uint16_t adc_value = ADC;
+            uint8_t intensity = calc_intensity(adc_value);
+
+            prev_adc_value_hi = (adc_value >> 8) & 0xFF;
+            prev_adc_value_lo = adc_value & 0xFF;
+            prev_intensity = intensity;
+
+            MAX7219_init(CS1 | CS2 | CS3 | CS4, intensity);
             fb_show();
+
             GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
         }
     }
@@ -329,6 +342,7 @@ int main(void)
 #define TW_CMD_ACK_WAIT_START (_BV(TWCMD1))
 #define TW_CMD_NACK_WAIT_START (_BV(TWAA) | _BV(TWCMD1))
 
+// Inspired by https://github.com/orangkucing/WireS/blob/master/WireS.cpp
 
 ISR(TWI_SLAVE_vect)
 {
@@ -341,20 +355,37 @@ ISR(TWI_SLAVE_vect)
             if(GPIOR0 & FLAG_REDRAWING) {
                 TWSCRB = TW_CMD_NACK;
             } else {
-                if(!(status & _BV(TWDIR))) {
+                if(status & _BV(TWDIR)) {
+                    read_index = 0;
+                } else {
                     fb_write_index = 0;
                 }
 
                 TWSCRB = TW_CMD_ACK;
             }
         } else { // Stop condition
-            GPIOR0 |= FLAG_FB_UPDATED;
+            if(!(status & _BV(TWDIR))) {
+                GPIOR0 |= FLAG_FB_UPDATED;
+            }
 
             TWSSRA = _BV(TWASIF);
         }
     } else if(status & _BV(TWDIF)) {
         if(status & _BV(TWDIR)) { // Send data to master
-            TWSD = 0xCC;
+            switch(read_index) {
+            case 0:
+                TWSD = prev_adc_value_hi;
+                read_index++;
+                break;
+            case 1:
+                TWSD = prev_adc_value_lo;
+                read_index++;
+                break;
+            default:
+                TWSD = prev_intensity;
+                break;
+            }
+            TWSCRB = TW_CMD_ACK;
         } else { // Data received
             framebuffer[fb_write_index] = TWSD;
             fb_write_index = (fb_write_index + 1) % sizeof(framebuffer);
