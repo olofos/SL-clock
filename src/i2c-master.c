@@ -132,14 +132,44 @@ static void IRAM_ATTR i2c_write_bit(uint8_t bit)
     i2c_delay();
 }
 
+// This assumes that SDA is already an input
+static uint8_t IRAM_ATTR i2c_read_bit(void)
+{
+    i2c_delay();
+    i2c_scl_high();
+
+    i2c_delay();
+    uint8_t result = i2c_sda_read() ? 1 : 0;
+    i2c_delay();
+
+    i2c_scl_low();
+    i2c_delay();
+
+    return result;
+}
+
 static uint8_t IRAM_ATTR i2c_read_ack(void)
 {
     i2c_sda_input();
 
+    uint8_t ack = i2c_read_bit() ? I2C_NACK : I2C_ACK;
+
+    i2c_sda_output();
+    i2c_sda_high();
+
+    return ack;
+}
+
+static void IRAM_ATTR i2c_write_ack(uint8_t ack)
+{
+    if(ack == I2C_ACK) {
+        i2c_sda_low();
+    } else {
+        i2c_sda_high();
+    }
+
     i2c_delay();
     i2c_scl_high();
-
-    uint8_t ack = i2c_sda_read() ? I2C_NACK : I2C_ACK;
 
     i2c_delay();
     i2c_delay();
@@ -147,11 +177,6 @@ static uint8_t IRAM_ATTR i2c_read_ack(void)
     i2c_scl_low();
 
     i2c_delay();
-
-    i2c_sda_output();
-    i2c_sda_high();
-
-    return ack;
 }
 
 uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
@@ -163,6 +188,22 @@ uint8_t IRAM_ATTR i2c_write_byte(uint8_t data)
     }
 
     return i2c_read_ack();
+}
+
+uint8_t IRAM_ATTR i2c_read_byte(uint8_t ack)
+{
+    i2c_sda_input();
+
+    uint8_t data = 0;
+    for(int i = 0; i < 8; i++)
+    {
+        data = (data << 1) | i2c_read_bit();
+    }
+
+    i2c_sda_output();
+    i2c_write_ack(ack);
+
+    return data;
 }
 
 uint16_t IRAM_ATTR i2c_write(const uint8_t *data, uint16_t len)

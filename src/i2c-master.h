@@ -12,6 +12,7 @@
 #define I2C_NACK 0
 
 #define I2C_WRITE 0
+#define I2C_READ 1
 
 void i2c_master_init(void);
 
@@ -19,6 +20,7 @@ uint8_t i2c_start(uint8_t address, uint8_t rw);
 void i2c_stop(void);
 
 uint8_t i2c_write_byte(uint8_t data);
+uint8_t i2c_read_byte(uint8_t ack);
 uint16_t i2c_write(const uint8_t *data, uint16_t len);
 
 uint8_t i2c_write_byte_lsb_first(uint8_t data);
