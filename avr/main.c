@@ -403,11 +403,11 @@ ISR(TWI_SLAVE_vect)
         if(status & _BV(TWDIR)) { // Send data to master
             switch(read_index) {
             case 0:
-                TWSD = prev_adc_value_hi;
+                TWSD = prev_adc_value_lo;
                 read_index++;
                 break;
             case 1:
-                TWSD = prev_adc_value_lo;
+                TWSD = prev_adc_value_hi;
                 read_index++;
                 break;
             default:
