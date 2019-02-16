@@ -284,10 +284,8 @@ void adc_init(void)
 
 #define NUM_LIGHT_LEVELS 8
 
-uint8_t calc_intensity(uint16_t adc_result)
+uint8_t calc_intensity(uint8_t current_intensity, uint16_t adc_result)
 {
-    static uint8_t current_light_level = 0;
-
     static const uint16_t light_tab_low[NUM_LIGHT_LEVELS] = {
         0, 8, 16, 32, 64, 128, 256, 512
     };
@@ -296,14 +294,14 @@ uint8_t calc_intensity(uint16_t adc_result)
         12, 23, 46, 91, 182, 363, 725, 1023
     };
 
-    if(adc_result < light_tab_low[current_light_level]) {
-        current_light_level--;
+    if(adc_result < light_tab_low[current_intensity]) {
+        current_intensity--;
     }
-    if(adc_result > light_tab_high[current_light_level]) {
-        current_light_level++;
+    if(adc_result > light_tab_high[current_intensity]) {
+        current_intensity++;
     }
 
-    return current_light_level;
+    return current_intensity;
 }
 
 int main(void)
@@ -319,11 +317,13 @@ int main(void)
     GPIOR0 |= FLAG_FB_UPDATED;
     sei();
 
+    uint8_t intensity = 0;
+
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
             uint16_t adc_value = ADC;
-            uint8_t intensity = calc_intensity(adc_value);
+            intensity = calc_intensity(intensity, adc_value);
 
             prev_adc_value_hi = (adc_value >> 8) & 0xFF;
             prev_adc_value_lo = adc_value & 0xFF;
