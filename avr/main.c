@@ -304,6 +304,8 @@ uint8_t calc_intensity(uint8_t current_intensity, uint16_t adc_result)
     return current_intensity;
 }
 
+#define NUM_ADC_VALUES 3
+
 int main(void)
 {
     IO_init();
@@ -317,19 +319,46 @@ int main(void)
     GPIOR0 |= FLAG_FB_UPDATED;
     sei();
 
-    uint8_t intensity = 0;
+    uint8_t current_intensity = 0;
+
+    uint16_t adc_values[NUM_ADC_VALUES] = {0};
+    uint8_t adc_value_index = 0;
 
     for(;;) {
         if(GPIOR0 & FLAG_FB_UPDATED) {
             GPIOR0 |= FLAG_REDRAWING;
+
             uint16_t adc_value = ADC;
-            intensity = calc_intensity(intensity, adc_value);
+
+            adc_values[adc_value_index++] = adc_value;
+
+            if(adc_value_index >= NUM_ADC_VALUES) {
+                adc_value_index = 0;
+            }
+
+            uint8_t intensities[NUM_ADC_VALUES];
+
+            for(uint8_t i = 0; i < NUM_ADC_VALUES; i++) {
+                intensities[i] = calc_intensity(current_intensity, adc_values[i]);
+            }
+
+            uint8_t all_equal = 1;
+            for(uint8_t i = 0; i < NUM_ADC_VALUES-1; i++) {
+                if(intensities[i+1] != intensities[i]) {
+                    all_equal = 0;
+                    break;
+                }
+            }
+
+            if(all_equal) {
+                current_intensity = intensities[0];
+            }
 
             prev_adc_value_hi = (adc_value >> 8) & 0xFF;
             prev_adc_value_lo = adc_value & 0xFF;
-            prev_intensity = intensity;
+            prev_intensity = current_intensity;
 
-            MAX7219_init(CS1 | CS2 | CS3 | CS4, intensity);
+            MAX7219_init(CS1 | CS2 | CS3 | CS4, current_intensity);
             fb_show();
 
             GPIOR0 &= ~(FLAG_REDRAWING | FLAG_FB_UPDATED);
