@@ -5,12 +5,10 @@
 #include "io.h"
 #include "config.h"
 #include "max7219.h"
+#include "avr-i2c-led-matrix.h"
 
 #define FLAG_REDRAWING 0x01
 #define FLAG_FB_UPDATED 0x02
-
-uint8_t fb_write_index;
-uint8_t read_index;
 
 volatile uint8_t prev_adc_value_hi;
 volatile uint8_t prev_adc_value_lo;
@@ -282,18 +280,16 @@ void adc_init(void)
     ADCSRA = _BV(ADEN) | _BV(ADSC) | _BV(ADATE) | _BV(ADPS2) | _BV(ADPS1);
 }
 
-#define NUM_LIGHT_LEVELS 8
+volatile uint16_t light_tab_low[AVR_I2C_NUM_LEVELS] = {
+    0, 8, 16, 32, 64, 128, 256, 512
+};
+
+volatile uint16_t light_tab_high[AVR_I2C_NUM_LEVELS] = {
+    12, 23, 46, 91, 182, 363, 725, 1023
+};
 
 uint8_t calc_intensity(uint8_t current_intensity, uint16_t adc_result)
 {
-    static const uint16_t light_tab_low[NUM_LIGHT_LEVELS] = {
-        0, 8, 16, 32, 64, 128, 256, 512
-    };
-
-    static const uint16_t light_tab_high[NUM_LIGHT_LEVELS] = {
-        12, 23, 46, 91, 182, 363, 725, 1023
-    };
-
     if(adc_result < light_tab_low[current_intensity]) {
         current_intensity--;
     }
@@ -375,6 +371,10 @@ int main(void)
 
 ISR(TWI_SLAVE_vect)
 {
+    static uint8_t write_cmd;
+    static uint8_t write_index;
+    static uint8_t read_index;
+
     uint8_t status = TWSSRA;
 
     if(status & (_BV(TWC) | _BV(TWBE))) {
@@ -387,7 +387,8 @@ ISR(TWI_SLAVE_vect)
                 if(status & _BV(TWDIR)) {
                     read_index = 0;
                 } else {
-                    fb_write_index = 0;
+                    write_cmd = AVR_I2C_CMD_NONE;
+                    write_index = 0;
                 }
 
                 TWSCRB = TW_CMD_ACK;
@@ -416,8 +417,34 @@ ISR(TWI_SLAVE_vect)
             }
             TWSCRB = TW_CMD_ACK;
         } else { // Data received
-            framebuffer[fb_write_index] = TWSD;
-            fb_write_index = (fb_write_index + 1) % sizeof(framebuffer);
+            switch(write_cmd) {
+            case AVR_I2C_CMD_NONE:
+                write_cmd = TWSD;
+                break;
+
+            case AVR_I2C_CMD_FRAMEBUFFER:
+                framebuffer[write_index] = TWSD;
+                write_index = (write_index + 1) % sizeof(framebuffer);
+                break;
+
+            case AVR_I2C_CMD_INTENSITY_LOW:
+            {
+                uint8_t *ptr = (uint8_t*)light_tab_low;
+
+                ptr[write_index] = TWSD;
+                write_index = (write_index + 1) % sizeof(light_tab_low);
+            }
+            break;
+
+            case AVR_I2C_CMD_INTENSITY_HIGH:
+            {
+                uint8_t *ptr = (uint8_t*)light_tab_high;
+
+                ptr[write_index] = TWSD;
+                write_index = (write_index + 1) % sizeof(light_tab_low);
+            }
+            break;
+            }
             TWSCRB = TW_CMD_ACK;
         }
     }
