@@ -349,6 +349,7 @@ struct http_url_handler http_url_tab[] = {
     {"/api/status.json", cgi_status, NULL},
     {"/api/log.json", cgi_log, NULL},
     {"/api/syslog-config.json", cgi_syslog_config, NULL},
+    {"/api/led-matrux-config.json", cgi_led_matrix_config, NULL},
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}

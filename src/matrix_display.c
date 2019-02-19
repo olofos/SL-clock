@@ -1,14 +1,18 @@
 #include <string.h>
 #include <time.h>
 #include <esp_common.h>
+#include <freertos/semphr.h>
 
 #include "i2c-master.h"
 #include "display.h"
 #include "matrix_framebuffer.h"
+#include "matrix_display.h"
 #include "fonts.h"
 #include "journey.h"
 #include "status.h"
 #include "log.h"
+
+#include "../avr/avr-i2c-led-matrix.h"
 
 #define LOG_SYS LOG_SYS_DISPLAY
 
@@ -121,9 +125,36 @@ static void update_journey_display_state(struct journey_display_state *state, co
     }
 }
 
+
+uint16_t matrix_intensity_low[AVR_I2C_NUM_LEVELS];
+uint16_t matrix_intensity_high[AVR_I2C_NUM_LEVELS];
+uint8_t matrix_intensity_override;
+uint8_t matrix_intensity_override_level;
+uint8_t matrix_intensity_updated;
+
+xSemaphoreHandle matrix_intensity_mutex = NULL;
+
+static void send_intensity(uint8_t command, uint16_t *tab)
+{
+    while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
+        LOG("No ACK");
+        vTaskDelayMs(5);
+    }
+
+    i2c_write_byte(command);
+    for(int i = 0; i < AVR_I2C_NUM_LEVELS; i++) {
+        i2c_write_byte(tab[i] & 0xFF);
+        i2c_write_byte((tab[i] >> 8) & 0xFF);
+    }
+
+    i2c_stop();
+}
+
 void matrix_display_main(void)
 {
     matrix_init();
+
+    matrix_intensity_mutex = xSemaphoreCreateMutex();
 
     fb_blit = matrix_blit;
 
@@ -180,11 +211,35 @@ void matrix_display_main(void)
             fb_draw_icon(X_ICON + journey_display_states[i].shift, journey_display_states[i].y, journey_icons[journies[i].mode], FB_ALIGN_CENTER_V);
         }
 
-        while(i2c_start(0x5B, I2C_WRITE) != I2C_ACK) {
+        if(i2c_start(MATRIX_I2C_ADDRESS, I2C_READ) != I2C_ACK) {
+            LOG("Reading: No ACK");
+        } else {
+
+            uint8_t lo = i2c_read_byte(I2C_ACK);
+            uint8_t hi = i2c_read_byte(I2C_ACK);
+            uint8_t intensity = i2c_read_byte(I2C_NACK);
+
+            LOG("ADC: %-4d Intensity: %d", (((uint16_t)hi)<<8)+((uint16_t)lo), intensity);
+        }
+        i2c_stop();
+
+        if(matrix_intensity_updated) {
+            if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
+                send_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_low);
+                send_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_high);
+
+                matrix_intensity_updated = 0;
+
+                xSemaphoreGive(matrix_intensity_mutex);
+            }
+        }
+
+        while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
             LOG("No ACK");
             vTaskDelayMs(5);
         }
 
+        i2c_write_byte(AVR_I2C_CMD_FRAMEBUFFER);
         i2c_write_lsb_first(framebuffer, 128 );
         i2c_stop();
 
