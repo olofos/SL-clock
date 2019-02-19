@@ -19,6 +19,7 @@
 #include "http-server-task.h"
 #include "http-server-url-handlers.h"
 #include "config.h"
+#include "display.h"
 
 void config_load_journies(json_stream *json);
 
@@ -291,6 +292,16 @@ extern const char *task_names[];
 static void write_system_status(struct json_writer* json)
 {
     json_writer_begin_object(json, "system");
+
+    const char *graphics = "None";
+    if(display_type == DISPLAY_TYPE_OLED) {
+        graphics = "SH1106";
+    } else if(display_type == DISPLAY_TYPE_MATRIX) {
+        graphics = "LED Matrix";
+    }
+
+    json_writer_write_string(json, "graphics", graphics);
+
     json_writer_write_int(json, "heap", xPortGetFreeHeapSize());
     json_writer_begin_array(json, "tasks");
 

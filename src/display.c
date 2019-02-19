@@ -11,6 +11,7 @@
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
 
 xQueueHandle display_message_queue;
+enum DisplayType display_type = DISPLAY_TYPE_NONE;
 
 void display_task(void *pvParameters)
 {
@@ -19,6 +20,7 @@ void display_task(void *pvParameters)
     for(;;) {
         if(i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) == I2C_ACK) {
             i2c_stop();
+            display_type = DISPLAY_TYPE_OLED;
             oled_display_main();
         }
         i2c_stop();
@@ -28,6 +30,7 @@ void display_task(void *pvParameters)
 
         if(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) == I2C_ACK) {
             i2c_stop();
+            display_type = DISPLAY_TYPE_MATRIX;
             matrix_display_main();
         }
         i2c_stop();
