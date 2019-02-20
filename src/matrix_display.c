@@ -126,10 +126,10 @@ static void update_journey_display_state(struct journey_display_state *state, co
 }
 
 
-uint16_t matrix_intensity_low[AVR_I2C_NUM_LEVELS];
-uint16_t matrix_intensity_high[AVR_I2C_NUM_LEVELS];
-uint8_t matrix_intensity_override;
-uint8_t matrix_intensity_override_level;
+uint16_t matrix_intensity_low[AVR_I2C_NUM_LEVELS] = { 0, 8, 16, 32, 64, 128, 256, 512 };
+uint16_t matrix_intensity_high[AVR_I2C_NUM_LEVELS] = { 12, 23, 46, 91, 182, 363, 725, 1023 };
+uint8_t matrix_intensity_override = 0;
+uint8_t matrix_intensity_override_level = 0;
 uint8_t matrix_intensity_updated;
 
 xSemaphoreHandle matrix_intensity_mutex = NULL;
@@ -147,6 +147,25 @@ static void send_intensity(uint8_t command, uint16_t *tab)
         i2c_write_byte((tab[i] >> 8) & 0xFF);
     }
 
+    i2c_stop();
+}
+
+static void send_fixed_intensity(uint8_t command, uint8_t level)
+{
+    while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
+        LOG("No ACK");
+        vTaskDelayMs(5);
+    }
+
+    i2c_write_byte(command);
+    for(int i = 0; i < level; i++) {
+        i2c_write_byte(0);
+        i2c_write_byte(0);
+    }
+    for(int i = level; i <= AVR_I2C_NUM_LEVELS; i++) {
+        i2c_write_byte(0xFF);
+        i2c_write_byte(0xFF);
+    }
     i2c_stop();
 }
 
@@ -225,8 +244,13 @@ void matrix_display_main(void)
 
         if(matrix_intensity_updated) {
             if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
-                send_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_low);
-                send_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_high);
+                if(matrix_intensity_override && (matrix_intensity_override_level < AVR_I2C_NUM_LEVELS)) {
+                    send_fixed_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_override_level+1);
+                    send_fixed_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_override_level);
+                } else {
+                    send_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_low);
+                    send_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_high);
+                }
 
                 matrix_intensity_updated = 0;
 
