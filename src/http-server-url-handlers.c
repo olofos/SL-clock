@@ -686,7 +686,6 @@ enum http_cgi_state cgi_led_matrix_config(struct http_request* request)
         http_end_header(request);
 
         if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
-
             struct json_writer json;
             json_writer_http_init(&json, request);
 
@@ -821,6 +820,31 @@ enum http_cgi_state cgi_led_matrix_config(struct http_request* request)
         }
     }
 
+    return HTTP_CGI_NOT_FOUND;
+}
 
+enum http_cgi_state cgi_led_matrix_status(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_end_header(request);
+
+        struct json_writer json;
+        json_writer_http_init(&json, request);
+
+        json_writer_begin_object(&json, NULL);
+
+        if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
+            json_writer_write_int(&json, "level", matrix_intensity_level);
+            json_writer_write_int(&json, "adc", matrix_intensity_adc);
+            xSemaphoreGive(matrix_intensity_mutex);
+        }
+
+        json_writer_end_object(&json);
+
+        http_end_body(request);
+        return HTTP_CGI_DONE;
+    }
     return HTTP_CGI_NOT_FOUND;
 }

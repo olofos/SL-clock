@@ -8,5 +8,7 @@ enum http_cgi_state cgi_status(struct http_request* request);
 enum http_cgi_state cgi_log(struct http_request* request);
 enum http_cgi_state cgi_syslog_config(struct http_request* request);
 enum http_cgi_state cgi_led_matrix_config(struct http_request* request);
+enum http_cgi_state cgi_led_matrix_status(struct http_request* request);
+
 
 #endif

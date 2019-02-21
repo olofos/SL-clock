@@ -132,6 +132,10 @@ uint8_t matrix_intensity_override = 0;
 uint8_t matrix_intensity_override_level = 0;
 uint8_t matrix_intensity_updated;
 
+uint16_t matrix_intensity_adc;
+uint8_t matrix_intensity_level;
+
+
 xSemaphoreHandle matrix_intensity_mutex = NULL;
 
 static void send_intensity(uint8_t command, uint16_t *tab)
@@ -231,14 +235,22 @@ void matrix_display_main(void)
         }
 
         if(i2c_start(MATRIX_I2C_ADDRESS, I2C_READ) != I2C_ACK) {
-            LOG("Reading: No ACK");
+            LOG("Reading ADC: No ACK");
         } else {
 
             uint8_t lo = i2c_read_byte(I2C_ACK);
             uint8_t hi = i2c_read_byte(I2C_ACK);
             uint8_t intensity = i2c_read_byte(I2C_NACK);
+            uint16_t adc = (((uint16_t)hi)<<8)+((uint16_t)lo);
 
-            LOG("ADC: %-4d Intensity: %d", (((uint16_t)hi)<<8)+((uint16_t)lo), intensity);
+            if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
+                matrix_intensity_adc = adc;
+                matrix_intensity_level = intensity;
+                xSemaphoreGive(matrix_intensity_mutex);
+            }
+
+            LOG("ADC: %-4d Intensity: %d", adc, intensity);
+
         }
         i2c_stop();
 
