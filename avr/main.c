@@ -395,7 +395,9 @@ ISR(TWI_SLAVE_vect)
             }
         } else { // Stop condition
             if(!(status & _BV(TWDIR))) {
-                GPIOR0 |= FLAG_FB_UPDATED;
+                if(write_cmd == AVR_I2C_CMD_FRAMEBUFFER) {
+                    GPIOR0 |= FLAG_FB_UPDATED;
+                }
             }
 
             TWSSRA = _BV(TWASIF);
