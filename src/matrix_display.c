@@ -166,9 +166,9 @@ static void send_fixed_intensity(uint8_t command, uint8_t level)
         i2c_write_byte(0);
         i2c_write_byte(0);
     }
-    for(int i = level; i <= AVR_I2C_NUM_LEVELS; i++) {
+    for(int i = level; i < AVR_I2C_NUM_LEVELS; i++) {
         i2c_write_byte(0xFF);
-        i2c_write_byte(0xFF);
+        i2c_write_byte(0x03);
     }
     i2c_stop();
 }
