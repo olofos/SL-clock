@@ -764,7 +764,9 @@ enum http_cgi_state cgi_led_matrix_config(struct http_request* request)
                 }
                     break;
                 case 3: // overrideLevel
-                    override_level = json_get_long(&json);
+                    if(json_next(&json) == JSON_NUMBER) {
+                        override_level = json_get_long(&json);
+                    }
                     break;
                 }
             }
