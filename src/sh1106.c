@@ -7,7 +7,7 @@
 
 #include "sh1106.h"
 #include "sh1106-cmd.h"
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
 
 #include "log.h"
 #define LOG_SYS LOG_SYS_SH1106
@@ -58,12 +58,9 @@ const uint8_t sh1106_init_seq[] = {
     OLED_CMD_DISPLAY_ON,
 };
 
-static uint8_t the_framebuffer[FB_SIZE];
-uint8_t *framebuffer = the_framebuffer;
-
 #define OLED_START_COL 2
 
-void fb_display(void)
+void oled_display(void)
 {
     for(int y = 0; y < 8; y++) {
         const uint8_t init_page[] = {
@@ -90,6 +87,7 @@ int sh1106_init(void)
     int ret = i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) != I2C_ACK;
     if(!ret) {
         i2c_write(sh1106_init_seq, sizeof(sh1106_init_seq));
+        fb_blit = oled_blit;
     } else {
         LOG("No ACK");
     }

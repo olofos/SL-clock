@@ -19,6 +19,8 @@
 #include "http-server-task.h"
 #include "http-server-url-handlers.h"
 #include "config.h"
+#include "display.h"
+#include "matrix_display.h"
 
 void config_load_journies(json_stream *json);
 
@@ -291,6 +293,16 @@ extern const char *task_names[];
 static void write_system_status(struct json_writer* json)
 {
     json_writer_begin_object(json, "system");
+
+    const char *graphics = "None";
+    if(display_type == DISPLAY_TYPE_OLED) {
+        graphics = "SH1106";
+    } else if(display_type == DISPLAY_TYPE_MATRIX) {
+        graphics = "LED Matrix";
+    }
+
+    json_writer_write_string(json, "graphics", graphics);
+
     json_writer_write_int(json, "heap", xPortGetFreeHeapSize());
     json_writer_begin_array(json, "tasks");
 
@@ -663,5 +675,178 @@ enum http_cgi_state cgi_syslog_config(struct http_request* request)
         return HTTP_CGI_DONE;
     }
 
+    return HTTP_CGI_NOT_FOUND;
+}
+
+enum http_cgi_state cgi_led_matrix_config(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_end_header(request);
+
+        if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
+            struct json_writer json;
+            json_writer_http_init(&json, request);
+
+            json_writer_begin_object(&json, NULL);
+
+            json_writer_begin_array(&json, "levelsLow");
+            for(int i = 0; i < AVR_I2C_NUM_LEVELS; i++) {
+                json_writer_write_int(&json, NULL, matrix_intensity_low[i]);
+            }
+            json_writer_end_array(&json);
+
+            json_writer_begin_array(&json, "levelsHigh");
+            for(int i = 0; i < AVR_I2C_NUM_LEVELS; i++) {
+                json_writer_write_int(&json, NULL, matrix_intensity_high[i]);
+            }
+            json_writer_end_array(&json);
+
+            json_writer_write_bool(&json, "override", matrix_intensity_override);
+            json_writer_write_int(&json, "overrideLevel", matrix_intensity_override_level);
+
+            json_writer_end_object(&json);
+
+            xSemaphoreGive(matrix_intensity_mutex);
+        }
+
+        http_end_body(request);
+        return HTTP_CGI_DONE;
+    } else if(request->method == HTTP_METHOD_POST) {
+        json_stream json;
+        json_open_http(&json, request);
+
+        if(json_expect(&json, JSON_OBJECT)) {
+            uint16_t tab_low[AVR_I2C_NUM_LEVELS];
+            uint16_t tab_high[AVR_I2C_NUM_LEVELS];
+
+            uint8_t override = matrix_intensity_override;
+            uint8_t override_level = matrix_intensity_override_level;
+
+            if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
+                memcpy(tab_low, matrix_intensity_low, sizeof(tab_low));
+                memcpy(tab_high, matrix_intensity_high, sizeof(tab_high));
+                xSemaphoreGive(matrix_intensity_mutex);
+            } else {
+                WARNING("Could not get matrix mutex");
+            }
+
+            int n;
+            while((n = json_find_names(&json, (const char *[]) { "levelsLow", "levelsHigh", "override", "overrideLevel"  }, 4)) >= 0) {
+                switch(n) {
+                case 0: // levelsLow
+                    if(json_expect(&json, JSON_ARRAY)) {
+                        enum json_type type;
+                        int i = 0;
+                        while((type = json_next(&json)) == JSON_NUMBER) {
+                            tab_low[i++] = json_get_long(&json);
+                        }
+                    }
+                    break;
+                case 1: // levelsHigh
+                    if(json_expect(&json, JSON_ARRAY)) {
+                        enum json_type type;
+                        int i = 0;
+                        while((type = json_next(&json)) == JSON_NUMBER) {
+                            tab_high[i++] = json_get_long(&json);
+                        }
+                    }
+                    break;
+                case 2: // override
+                {
+                    enum json_type type = json_next(&json);
+                    if(type == JSON_TRUE) {
+                        override = 1;
+                    } else {
+                        override = 0;
+                    }
+                }
+                    break;
+                case 3: // overrideLevel
+                    if(json_next(&json) == JSON_NUMBER) {
+                        override_level = json_get_long(&json);
+                    }
+                    break;
+                }
+            }
+
+            int valid = 1;
+
+            if((tab_low[0] != 0) || (tab_high[AVR_I2C_NUM_LEVELS-1] != 1023)) {
+                valid = 0;
+            }
+
+            if(!((0 <= override_level) && (override_level < AVR_I2C_NUM_LEVELS))) {
+                valid = 0;
+            }
+
+            for(int i = 0; i < AVR_I2C_NUM_LEVELS - 1; i++) {
+                if(!((0 <= tab_low[i+1]) && (tab_low[i+1] < 1024))) {
+                    valid = 0;
+                }
+
+                if(!(tab_low[i] <= tab_low[i+1])) {
+                    valid = 0;
+                }
+
+                if(!((0 <= tab_high[i]) && (tab_high[i] < 1024))) {
+                    valid = 0;
+                }
+
+                if(!(tab_high[i] <= tab_high[i+1])) {
+                    valid = 0;
+                }
+            }
+
+            if(valid) {
+                if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
+                    memcpy(matrix_intensity_low, tab_low, sizeof(tab_low));
+                    memcpy(matrix_intensity_high, tab_high, sizeof(tab_high));
+                    matrix_intensity_override = override;
+                    matrix_intensity_override_level = override_level;
+
+                    matrix_intensity_updated = 1;
+
+                    xSemaphoreGive(matrix_intensity_mutex);
+                } else {
+                    WARNING("Could not get matrix mutex");
+                }
+
+                http_server_write_simple_response(request, 204, NULL, NULL);
+                return HTTP_CGI_DONE;
+            } else {
+                http_server_write_simple_response(request, 400, "application/json", "{\"message\" : \"Bad request\"}");
+                return HTTP_CGI_DONE;
+            }
+        }
+    }
+
+    return HTTP_CGI_NOT_FOUND;
+}
+
+enum http_cgi_state cgi_led_matrix_status(struct http_request* request)
+{
+    if(request->method == HTTP_METHOD_GET) {
+        http_begin_response(request, 200, "application/json");
+        http_write_header(request, "Cache-Control", "no-cache");
+        http_end_header(request);
+
+        struct json_writer json;
+        json_writer_http_init(&json, request);
+
+        json_writer_begin_object(&json, NULL);
+
+        if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, portMAX_DELAY) == pdTRUE)) {
+            json_writer_write_int(&json, "level", matrix_intensity_level);
+            json_writer_write_int(&json, "adc", matrix_intensity_adc);
+            xSemaphoreGive(matrix_intensity_mutex);
+        }
+
+        json_writer_end_object(&json);
+
+        http_end_body(request);
+        return HTTP_CGI_DONE;
+    }
     return HTTP_CGI_NOT_FOUND;
 }

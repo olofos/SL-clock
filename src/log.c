@@ -29,6 +29,7 @@ const char* log_system_names[LOG_NUM_SYSTEMS] = {
     [LOG_SYS_TZDB] = "TZDB",
     [LOG_SYS_JSON] = "JSON",
     [LOG_SYS_SH1106] = "SH1106",
+    [LOG_SYS_MATRIX] = "LED",
     [LOG_SYS_WIFI] = "WIFI",
     [LOG_SYS_CONFIG] = "CONF",
     [LOG_SYS_DISPLAY] = "DISP",

@@ -28,6 +28,10 @@
 #include "log.h"
 #include "syslog.h"
 
+#include "i2c-master.h"
+#include "matrix_framebuffer.h"
+#include "fonts.h"
+
 #define LOG_SYS LOG_SYS_MAIN
 
 #define vTaskDelayMs(ms)	vTaskDelay((ms)/portTICK_RATE_MS)
@@ -105,7 +109,7 @@ void spiffs_fs_init(void)
     }
 }
 
-#define MAX_TASKS 7
+#define MAX_TASKS 8
 
 #define TASK_WIFI 0
 #define TASK_DISPLAY 1
@@ -114,6 +118,8 @@ void spiffs_fs_init(void)
 #define TASK_JOURNEY 4
 #define TASK_HTTPD 5
 #define TASK_SYSLOG 6
+
+#define TASK_LED_MATRIX 7
 
 xTaskHandle task_handle[MAX_TASKS];
 const char *task_names[MAX_TASKS+1] = {
@@ -124,6 +130,7 @@ const char *task_names[MAX_TASKS+1] = {
     [TASK_JOURNEY] = "journey",
     [TASK_HTTPD] = "httpd",
     [TASK_SYSLOG] = "syslog",
+    [TASK_LED_MATRIX] = " led",
     NULL
 };
 

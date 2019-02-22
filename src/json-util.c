@@ -131,7 +131,7 @@ int json_find_names(json_stream *json, const char * names[], int num)
     }
     if(type != JSON_OBJECT_END)
     {
-        LOG("Expected JSON_OBJECT_END");
+        LOG("Expected JSON_OBJECT_END, got %s", json_type_to_string(type));
     }
     return -1;
 }

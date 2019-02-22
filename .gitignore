@@ -5,3 +5,8 @@ src/keys.h
 .deps/
 test/results
 data/config.json
+*.o
+*.elf
+*.hex
+*.lss
+*.map

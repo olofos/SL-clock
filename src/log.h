@@ -41,6 +41,7 @@ enum log_system
     LOG_SYS_TZDB,
     LOG_SYS_JSON,
     LOG_SYS_SH1106,
+    LOG_SYS_MATRIX,
     LOG_SYS_WIFI,
     LOG_SYS_CONFIG,
     LOG_SYS_DISPLAY,

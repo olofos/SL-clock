@@ -1,84 +1,30 @@
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
-#include "framebuffer.h"
+#include "oled_framebuffer.h"
+#include "matrix_framebuffer.h"
 #include "fonts.h"
-#include "logo-paw-64x64.h"
-
 #include "log.h"
+
 #define LOG_SYS LOG_SYS_DISPLAY
 
-static enum fb_pen current_pen = FB_NORMAL;
+#define FB_SIZE ((OLED_SIZE > MATRIX_SIZE) ? OLED_SIZE : MATRIX_SIZE)
+
+static uint8_t the_framebuffer[FB_SIZE];
+uint8_t *framebuffer = the_framebuffer;
+
+void (*fb_blit)(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len);
+
+enum fb_pen fb_current_pen = FB_NORMAL;
 
 void fb_set_pen(enum fb_pen pen)
 {
-    current_pen = pen;
-}
-
-static void fb_set_pixel_row(uint16_t n, uint8_t m)
-{
-    if(current_pen == FB_NORMAL) {
-        framebuffer[n] |= m;
-    } else {
-        framebuffer[n] &= ~m;
-    }
-}
-
-
-void fb_set_pixel(int16_t x,int16_t y)
-{
-    if((0 <= x) && (x < FB_WIDTH) && (0 <= y) && (y < FB_HEIGHT))
-    {
-        const uint16_t n = x + FB_WIDTH * (y / 8);
-        const uint8_t m = 1 << (y % 8);
-
-        fb_set_pixel_row(n, m);
-    }
-}
-
-void fb_clear(void)
-{
-    memset(framebuffer, 0, FB_SIZE);
-}
-
-void fb_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data, uint16_t len)
-{
-    if(-h >= y || y > FB_HEIGHT) {
-        return;
-    }
-    uint8_t raster_height = 1 + ((h - 1) / 8);
-    int8_t offset = y & 0x07;
-
-    if(!len)
-    {
-        len = w * raster_height;
-    }
-
-    for(uint16_t i = 0; i < len; i++)
-    {
-        uint8_t c = *data++;
-
-        int16_t x_pos = x + (i / raster_height);
-        int16_t data_pos = x_pos + ((y >> 3) + (i % raster_height)) * FB_WIDTH;
-
-        if((0 <= x_pos) && (x_pos < FB_WIDTH))
-        {
-            if((0 <= data_pos) && (data_pos < FB_SIZE))
-            {
-                fb_set_pixel_row(data_pos, c << offset);
-            }
-            if((0 <= data_pos + FB_WIDTH) && (data_pos + FB_WIDTH < FB_SIZE))
-            {
-                fb_set_pixel_row(data_pos + FB_WIDTH, c >> (8 - offset));
-            }
-        }
-    }
+    fb_current_pen = pen;
 }
 
 void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignment alignment)
@@ -90,11 +36,16 @@ void fb_draw_icon(int16_t x, int16_t y, const struct icon *icon, enum fb_alignme
     if(alignment & FB_ALIGN_CENTER_H)
     {
         x -= icon->width/2;
+    } else if(alignment & FB_ALIGN_END_H) {
+        x -= icon->width;
     }
 
     if(alignment & FB_ALIGN_CENTER_V)
     {
         y -= icon->height / 2;
+    } else if(alignment & FB_ALIGN_END_V)
+    {
+        y -= icon->height;
     }
 
     fb_blit(x, y, icon->width, icon->height, icon->data, 0);
@@ -117,9 +68,13 @@ void fb_draw_string(int16_t x, int16_t y, const char *text, uint8_t len, const u
 
     if(alignment & FB_ALIGN_CENTER_H) {
         x -= fb_string_length(text, len, font_data) / 2;
+    } else if(alignment & FB_ALIGN_END_H) {
+        x -= fb_string_length(text, len, font_data);
     }
 
     if(alignment & FB_ALIGN_CENTER_V) {
+        y -= char_height / 2;
+    } else if(alignment & FB_ALIGN_END_V) {
         y -= char_height / 2;
     }
 
@@ -263,137 +218,5 @@ void fb_free_icon(struct icon *icon)
             free((char *)icon->data);
         }
         free(icon);
-    }
-}
-
-void fb_splash(void)
-{
-    fb_clear();
-
-    for(int y = 0; y < 8; y++)
-    {
-        fb_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
-    }
-
-    fb_display();
-}
-
-static void fb_draw_line_v(int16_t x, int16_t y1, int16_t y2)
-{
-    if((0 > x) || (x >= FB_WIDTH)) {
-        return;
-    }
-
-    if(y1 < 0) {
-        y1 = 0;
-    }
-
-    if(y2 >= FB_HEIGHT) {
-        y2 = FB_HEIGHT - 1;
-    }
-
-    if(y2 < y1) {
-        return;
-    }
-
-    const uint8_t site1 = y1 / 8;
-    const uint8_t site2 = y2 / 8;
-
-    const uint8_t m1 = 0xFF << (y1 & 0x07);
-    const uint8_t m2 = 0xFF >> (7 - (y2 & 0x07));
-
-    if(site2 > site1) {
-        fb_set_pixel_row(x + site1 * FB_WIDTH, m1);
-        fb_set_pixel_row(x + site2 * FB_WIDTH, m2);
-
-        for(uint8_t s = site1 + 1; s < site2; s++) {
-            fb_set_pixel_row(x + s * FB_WIDTH, 0xFF);
-        }
-    } else {
-        fb_set_pixel_row(x + site1 * FB_WIDTH, m1 & m2);
-    }
-}
-
-static void fb_draw_line_h(int16_t x1, int16_t x2, int16_t y)
-{
-    if((0 > y) || (y >= FB_HEIGHT)) {
-        return;
-    }
-
-    if(x1 < 0) {
-        x1 = 0;
-    }
-
-    if(x2 >= FB_WIDTH) {
-        x2 = FB_WIDTH - 1;
-    }
-
-    if(x2 < x1) {
-        return;
-    }
-
-    uint8_t s = y / 8;
-    uint8_t m = 1 << (y & 0x07);
-
-    for(uint8_t x = x1; x <= x2; x++) {
-        fb_set_pixel_row(x + s * FB_WIDTH, m);
-    }
-}
-
-
-const uint8_t corner_sw[] = { 0b00000111, 0b00011000, 0b00100000, 0b01000000, 0b01000000, 0b10000000, 0b10000000, 0b10000000, };
-const uint8_t corner_nw[] = { 0b11100000, 0b00011000, 0b00000100, 0b00000010, 0b00000010, 0b00000001, 0b00000001, 0b00000001, };
-const uint8_t corner_se[] = { 0b10000000, 0b10000000, 0b10000000, 0b01000000, 0b01000000, 0b00100000, 0b00011000, 0b00000111, };
-const uint8_t corner_ne[] = { 0b00000001, 0b00000001, 0b00000001, 0b00000010, 0b00000010, 0b00000100, 0b00011000, 0b11100000, };
-static const uint8_t corner_fill_sw[] = { 0b00000111, 0b00011111, 0b00111111, 0b01111111, 0b01111111, 0b11111111, 0b11111111, 0b11111111, };
-static const uint8_t corner_fill_nw[] = { 0b11100000, 0b11111000, 0b11111100, 0b11111110, 0b11111110, 0b11111111, 0b11111111, 0b11111111, };
-static const uint8_t corner_fill_se[] = { 0b11111111, 0b11111111, 0b11111111, 0b01111111, 0b01111111, 0b00111111, 0b00011111, 0b00000111, };
-static const uint8_t corner_fill_ne[] = { 0b11111111, 0b11111111, 0b11111111, 0b11111110, 0b11111110, 0b11111100, 0b11111000, 0b11100000, };
-
-void fb_draw_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
-{
-    fb_draw_line_h(x,x+w-1,y);
-    fb_draw_line_h(x,x+w-1,y+h-1);
-
-    fb_draw_line_v(x,    y,y+h-1);
-    fb_draw_line_v(x+w-1,y,y+h-1);
-}
-
-
-void fb_draw_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
-{
-    fb_blit(x,     y,     8, 8, corner_nw, 0);
-    fb_blit(x+w-8, y,     8, 8, corner_ne, 0);
-    fb_blit(x,     y+h-8, 8, 8, corner_sw, 0);
-    fb_blit(x+w-8, y+h-8, 8, 8, corner_se, 0);
-
-    fb_draw_line_h(x+8,x+w-8-1,y);
-    fb_draw_line_h(x+8,x+w-8-1,y+h-1);
-
-    fb_draw_line_v(x,    y+8,y+h-8-1);
-    fb_draw_line_v(x+w-1,y+8,y+h-8-1);
-}
-
-void fb_fill_rect(int16_t x, int16_t y, uint16_t w, uint16_t h)
-{
-    for(uint16_t i = 0; i < w; i++) {
-        fb_draw_line_v(x + i, y, y + h - 1);
-    }
-}
-
-void fb_fill_rect_round(int16_t x, int16_t y, uint16_t w, uint16_t h)
-{
-    fb_blit(x,     y,     8, 8, corner_fill_nw, 0);
-    fb_blit(x+w-8, y,     8, 8, corner_fill_ne, 0);
-    fb_blit(x,     y+h-8, 8, 8, corner_fill_sw, 0);
-    fb_blit(x+w-8, y+h-8, 8, 8, corner_fill_se, 0);
-
-    for(uint8_t i = 0; i < 8; i++) {
-        fb_draw_line_v(x+i,     y+8, y+h-9);
-        fb_draw_line_v(x+w-8+i, y+8, y+h-9);
-    }
-
-    for(uint16_t i = x + 8; i < x + w - 8; i++) {
-        fb_draw_line_v(i, y, y+h-1);
     }
 }
