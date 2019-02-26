@@ -12,6 +12,8 @@ extern uint8_t matrix_intensity_updated;
 extern uint8_t matrix_intensity_level;
 extern uint16_t matrix_intensity_adc;
 
+#ifdef __ESP_COMMON_H__
 extern xSemaphoreHandle matrix_intensity_mutex;
+#endif
 
 #endif
