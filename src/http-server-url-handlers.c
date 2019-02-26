@@ -22,8 +22,6 @@
 #include "display.h"
 #include "matrix_display.h"
 
-void config_load_journies(json_stream *json);
-
 #define LOG_SYS LOG_SYS_HTTPD
 
 static const char *get_status_of_ap(const struct wifi_ap *ap)
