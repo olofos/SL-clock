@@ -24,8 +24,8 @@
 #define STATE_NO_DISPLAY 3
 
 #define Y_CLOCK 7
-#define Y_JOURNEY_1 18
-#define Y_JOURNEY_2 27
+#define Y_JOURNEY_1 19
+#define Y_JOURNEY_2 28
 
 #define X_ICON 1
 #define X_TIME 12
