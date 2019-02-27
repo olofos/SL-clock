@@ -8,6 +8,7 @@ TARGET=user
 
 SRCDIR := src
 OBJDIR := obj
+BINDIR := bin
 DEPDIR := .deps
 TSTDIR := test/
 TSTOBJDIR := test/obj/
@@ -15,7 +16,7 @@ TSTBINDIR := test/bin/
 TSTDEPDIR := test/.deps/
 RESULTDIR := test/results/
 
-BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
+BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(BINDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
 
 SRC := $(SOURCES:%.c=$(SRCDIR)/%.c)
 OBJ := $(SOURCES:%.c=$(OBJDIR)/%.o)
@@ -97,20 +98,20 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 	$(V)$(OBJCOPY) --only-section .data -O binary obj/user.elf eagle.app.v6.data.bin
 	$(V)$(OBJCOPY) --only-section .irom0.text -O binary obj/user.elf eagle.app.v6.irom0text.bin
 	$(V)python $(SDK_PATH)/tools/gen_appbin.py obj/user.elf 0 2 0 4
-	$(V)mv eagle.app.v6.text.bin bin/eagle.app.v6.text.bin
-	$(V)mv eagle.app.v6.rodata.bin bin/eagle.app.v6.rodata.bin
-	$(V)mv eagle.app.v6.data.bin bin/eagle.app.v6.data.bin
-	$(V)mv eagle.app.v6.irom0text.bin bin/eagle.app.v6.irom0text.bin
-	$(V)mv eagle.app.flash.bin bin/eagle.app.flash.bin
+	$(V)mv eagle.app.v6.text.bin $(BINDIR)/eagle.app.v6.text.bin
+	$(V)mv eagle.app.v6.rodata.bin $(BINDIR)/eagle.app.v6.rodata.bin
+	$(V)mv eagle.app.v6.data.bin $(BINDIR)/eagle.app.v6.data.bin
+	$(V)mv eagle.app.v6.irom0text.bin $(BINDIR)/eagle.app.v6.irom0text.bin
+	$(V)mv eagle.app.flash.bin $(BINDIR)/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
-	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 bin/eagle.app.flash.bin 0x20000 bin/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
+	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
 
 spiffs-image:
-	../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ bin/spiffs.bin
+	../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
 
 spiffs-flash: spiffs-image
-	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 bin/spiffs.bin
+	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 $(BINDIR)/spiffs.bin
 
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
@@ -156,7 +157,7 @@ $(TSTBINDIR)test_%: $(TSTOBJDIR)test_%.o
 
 clean:
 	@echo Cleaning
-	$(V)-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d bin/eagle.app.v6.text.bin bin/eagle.app.v6.rodata.bin bin/eagle.app.v6.data.bin bin/eagle.app.v6.irom0text.bin bin/eagle.app.flash.bin
+	$(V)-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d $(BINDIR)/eagle.app.v6.text.bin $(BINDIR)/eagle.app.v6.rodata.bin $(BINDIR)/eagle.app.v6.data.bin $(BINDIR)/eagle.app.v6.irom0text.bin $(BINDIR)/eagle.app.flash.bin
 	$(V)$(MAKE) -Chttp-sm clean
 
 .PRECIOUS: $(TSTBINDIR)/test_%
