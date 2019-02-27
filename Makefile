@@ -14,7 +14,6 @@ TSTOBJDIR := test/obj/
 TSTBINDIR := test/bin/
 TSTDEPDIR := test/.deps/
 RESULTDIR := test/results/
-UNITYDIR := unity
 
 BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
 
