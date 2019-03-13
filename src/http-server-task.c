@@ -18,6 +18,7 @@
 #include "json-writer.h"
 #include "log.h"
 #include "http-sm/http.h"
+#include "http-sm/websocket.h"
 #include "http-server-task.h"
 #include "http-server-url-handlers.h"
 
@@ -354,6 +355,10 @@ struct http_url_handler http_url_tab[] = {
     {"/", cgi_spiffs, "/www/index.html"},
     {"/*", cgi_spiffs, NULL},
     {NULL, NULL, NULL}
+};
+
+struct websocket_url_handler websocket_url_tab[] = {
+    {NULL, NULL, NULL, NULL, NULL}
 };
 
 void http_server_task(void *pvParameters)
