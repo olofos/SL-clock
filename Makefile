@@ -107,14 +107,18 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
 
+mkspiffs/mkspiffs:
+	@Building mkspiffs
+	$(V)$(MAKE) -s -C mkspiffs
+
 build-web-app:
 	@echo Building web app
 	$(V)$(MAKE) -s -Cweb-app/
 
-spiffs-image: build-web-app
+spiffs-image: mkspiffs/mkspiffs build-web-app
 	$(V)cp web-app/dist/* data/www/
 	@echo Building spiffs image
-	$(V)../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
+	$(V)mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
 
 spiffs-flash: spiffs-image
 	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 $(BINDIR)/spiffs.bin
