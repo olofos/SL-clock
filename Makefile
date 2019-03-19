@@ -60,7 +60,7 @@ TST_CFLAGS = -Wall -I$(SRCDIR) -I$(BINSRCDIR) -ggdb -fsanitize=address -fno-omit
 TST_RESULTS = $(patsubst $(TSTDIR)test_%.c,$(RESULTDIR)test_%.txt,$(SOURCES_TST))
 TST_DEPS = $(TSTDEPDIR)*.d
 
-.PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs
+.PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs build-web-app
 
 all: build_dirs eagle.app.flash.bin
 
@@ -107,8 +107,14 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 flash: eagle.app.flash.bin
 	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
 
-spiffs-image:
-	../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
+build-web-app:
+	@echo Building web app
+	$(V)$(MAKE) -s -Cweb-app/
+
+spiffs-image: build-web-app
+	$(V)cp web-app/dist/* data/www/
+	@echo Building spiffs image
+	$(V)../mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
 
 spiffs-flash: spiffs-image
 	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 $(BINDIR)/spiffs.bin
