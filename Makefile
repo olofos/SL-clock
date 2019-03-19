@@ -62,7 +62,7 @@ TST_CFLAGS = -Wall -I$(SRCDIR) -I$(BINSRCDIR) -ggdb -fsanitize=address -fno-omit
 TST_RESULTS = $(patsubst $(TSTDIR)test_%.c,$(RESULTDIR)test_%.txt,$(SOURCES_TST))
 TST_DEPS = $(TSTDEPDIR)*.d
 
-.PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs build-web-app
+.PHONY: all bin flash clean erase spiffs-flash spiffs-image test build_dirs build-web-app build-sdk
 
 all: build_dirs eagle.app.flash.bin
 
@@ -80,7 +80,7 @@ $(TSTBINDIR)test_wifi-logic: $(TSTOBJDIR)wifi-logic.o
 http-sm/lib/libhttp-sm.a:
 	$(V)$(MAKE) CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Chttp-sm/ lib/libhttp-sm.a
 
-$(OBJDIR)/%.o : $(SRCDIR)/%.c
+$(OBJDIR)/%.o : $(SRCDIR)/%.c | esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
 	@echo CC $@
 	$(V)$(CC) $(CFLAGS) -c $< -o $@
 	$(V)$(CC) -MM -MT $@ $(CFLAGS) $< > $(DEPDIR)/$*.d
@@ -128,7 +128,11 @@ spiffs-flash: spiffs-image
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
 
-build-sdk: esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
+esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc:
+	$(V)$(MAKE) build-sdk -s
+
+build-sdk:
+	@echo Building toolchain
 	$(V)cd esp-open-sdk; $(MAKE) STANDALONE=n -s
 
 
