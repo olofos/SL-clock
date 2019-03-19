@@ -31,7 +31,7 @@ OBJCOPY = xtensa-lx106-elf-objcopy
 OBJDUMP = xtensa-lx106-elf-objdump
 
 export PATH := $(PATH):$(CURDIR)/esp-open-sdk/xtensa-lx106-elf/bin/
-export SDK_PATH :=$(CURDIR)/ESP8266_RTOS_SDK/
+export SDK_PATH := $(CURDIR)/ESP8266_RTOS_SDK/
 
 CFLAGS = -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
          -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
@@ -107,7 +107,7 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 	$(V)mv eagle.app.flash.bin $(BINDIR)/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
-	esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
+	$(V)esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
 
 mkspiffs/mkspiffs:
 	@Building mkspiffs
@@ -123,10 +123,10 @@ spiffs-image: mkspiffs/mkspiffs build-web-app
 	$(V)mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
 
 spiffs-flash: spiffs-image
-	esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 $(BINDIR)/spiffs.bin
+	$(V)esptool.py  -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m 0x100000 $(BINDIR)/spiffs.bin
 
 erase:
-	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
+	$(V)esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
 
 esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc:
 	$(V)$(MAKE) build-sdk -s
