@@ -24,12 +24,14 @@ DEPS := $(SOURCES:%.c=$(DEPDIR)/%.d)
 
 SOURCES_TST = $(wildcard $(TSTDIR)*.c)
 
-
 AR = xtensa-lx106-elf-ar
 CC = xtensa-lx106-elf-gcc
 NM = xtensa-lx106-elf-nm
 OBJCOPY = xtensa-lx106-elf-objcopy
 OBJDUMP = xtensa-lx106-elf-objdump
+
+export PATH := $(PATH):$(CURDIR)/esp-open-sdk/xtensa-lx106-elf/bin/
+export SDK_PATH :=$(CURDIR)/ESP8266_RTOS_SDK/
 
 CFLAGS = -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
          -ffunction-sections -fdata-sections -fno-builtin-printf -fno-jump-tables $(INCLUDES)
@@ -125,6 +127,9 @@ spiffs-flash: spiffs-image
 
 erase:
 	esptool.py -p /dev/ttyUSB0 --baud 921600 erase_flash
+
+build-sdk: esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
+	$(V)cd esp-open-sdk; $(MAKE) STANDALONE=n -s
 
 
 test: build_dirs $(TST_RESULTS)
