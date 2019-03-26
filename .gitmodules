@@ -6,7 +6,7 @@
 	url = git@github.com:olofos/SL-clock-web-app.git
 [submodule "mkspiffs"]
 	path = mkspiffs
-	url = https://github.com/igrr/mkspiffs.git
+	url = https://github.com/olofos/mkspiffs.git
 [submodule "esp-open-sdk"]
 	path = esp-open-sdk
 	url = https://github.com/pfalcon/esp-open-sdk.git

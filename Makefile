@@ -110,8 +110,8 @@ flash: eagle.app.flash.bin
 	$(V)esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
 
 mkspiffs/mkspiffs:
-	@Building mkspiffs
-	$(V)$(MAKE) -s -C mkspiffs
+	@echo Building mkspiffs
+	$(V)$(MAKE) -s -C mkspiffs CPPFLAGS="-DSPIFFS_USE_MAGIC=0 -DSPIFFS_USE_MAGIC_LENGTH=0 -DSPIFFS_OLD_ALIGNMENT=1"
 
 build-web-app:
 	@echo Building web app
