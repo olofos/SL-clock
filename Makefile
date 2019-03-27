@@ -15,6 +15,7 @@ TSTOBJDIR := test/obj/
 TSTBINDIR := test/bin/
 TSTDEPDIR := test/.deps/
 RESULTDIR := test/results/
+WEBAPPDIR := web-app
 
 BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(BINDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
 
@@ -115,10 +116,11 @@ mkspiffs/mkspiffs:
 
 build-web-app:
 	@echo Building web app
-	$(V)$(MAKE) -s -Cweb-app/
+	$(V)$(MAKE) -s -C${WEBAPPDIR}/
 
 spiffs-image: mkspiffs/mkspiffs build-web-app
-	$(V)cp web-app/dist/* data/www/
+	$(V)rm data/www/*
+	$(V)cp ${WEBAPPDIR}/dist/* data/www/
 	@echo Building spiffs image
 	$(V)mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin
 
