@@ -112,7 +112,7 @@ flash: eagle.app.flash.bin
 
 mkspiffs/mkspiffs:
 	@echo Building mkspiffs
-	$(V)$(MAKE) -s -C mkspiffs CPPFLAGS="-DSPIFFS_USE_MAGIC=0 -DSPIFFS_USE_MAGIC_LENGTH=0 -DSPIFFS_OLD_ALIGNMENT=1"
+	$(V)$(MAKE) -s -C mkspiffs CPPFLAGS="-DSPIFFS_USE_MAGIC=0 -DSPIFFS_USE_MAGIC_LENGTH=0 -DSPIFFS_OLD_ALIGNMENT=1 -DSPIFFS_OBJ_META_LEN=0 -DSPIFFS_OBJ_NAME_LEN=33"
 
 build-web-app:
 	@echo Building web app
