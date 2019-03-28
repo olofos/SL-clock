@@ -11,6 +11,8 @@
 #include "journey.h"
 #include "status.h"
 #include "log.h"
+#include "http-sm/http.h"
+#include "http-sm/websocket.h"
 
 #include "../avr/avr-i2c-led-matrix.h"
 
@@ -29,6 +31,8 @@
 
 #define X_ICON 1
 #define X_TIME 12
+
+extern struct websocket_connection *ws_display_conn;
 
 static int16_t journey_shift[2];
 
@@ -138,7 +142,7 @@ uint8_t matrix_intensity_level;
 
 xSemaphoreHandle matrix_intensity_mutex = NULL;
 
-static void send_intensity(uint8_t command, uint16_t *tab)
+static void send_actual_intensity(uint8_t command, uint16_t *tab)
 {
     while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
         LOG("No ACK");
@@ -169,6 +173,48 @@ static void send_fixed_intensity(uint8_t command, uint8_t level)
     for(int i = level; i < AVR_I2C_NUM_LEVELS; i++) {
         i2c_write_byte(0xFF);
         i2c_write_byte(0x03);
+    }
+    i2c_stop();
+}
+
+static void send_intensity(void)
+{
+    if(matrix_intensity_updated) {
+        if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
+            if(matrix_intensity_override && (matrix_intensity_override_level < AVR_I2C_NUM_LEVELS)) {
+                send_fixed_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_override_level+1);
+                send_fixed_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_override_level);
+            } else {
+                send_actual_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_low);
+                send_actual_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_high);
+            }
+
+            matrix_intensity_updated = 0;
+
+            xSemaphoreGive(matrix_intensity_mutex);
+        }
+    }
+}
+
+static void read_intensity(void)
+{
+    if(i2c_start(MATRIX_I2C_ADDRESS, I2C_READ) != I2C_ACK) {
+        LOG("Reading ADC: No ACK");
+    } else {
+
+        uint8_t lo = i2c_read_byte(I2C_ACK);
+        uint8_t hi = i2c_read_byte(I2C_ACK);
+        uint8_t intensity = i2c_read_byte(I2C_NACK);
+        uint16_t adc = (((uint16_t)hi)<<8)+((uint16_t)lo);
+
+        if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
+            matrix_intensity_adc = adc;
+            matrix_intensity_level = intensity;
+            xSemaphoreGive(matrix_intensity_mutex);
+        }
+
+        LOG("ADC: %-4d Intensity: %d", adc, intensity);
+
     }
     i2c_stop();
 }
@@ -234,50 +280,21 @@ void matrix_display_main(void)
             fb_draw_icon(X_ICON + journey_display_states[i].shift, journey_display_states[i].y, journey_icons[journies[i].mode], FB_ALIGN_CENTER_V);
         }
 
-        if(i2c_start(MATRIX_I2C_ADDRESS, I2C_READ) != I2C_ACK) {
-            LOG("Reading ADC: No ACK");
-        } else {
+        if(display_type == DISPLAY_TYPE_MATRIX) {
+            read_intensity();
+            send_intensity();
 
-            uint8_t lo = i2c_read_byte(I2C_ACK);
-            uint8_t hi = i2c_read_byte(I2C_ACK);
-            uint8_t intensity = i2c_read_byte(I2C_NACK);
-            uint16_t adc = (((uint16_t)hi)<<8)+((uint16_t)lo);
-
-            if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
-                matrix_intensity_adc = adc;
-                matrix_intensity_level = intensity;
-                xSemaphoreGive(matrix_intensity_mutex);
+            while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
+                LOG("No ACK");
+                vTaskDelayMs(5);
             }
 
-            LOG("ADC: %-4d Intensity: %d", adc, intensity);
-
+            i2c_write_byte(AVR_I2C_CMD_FRAMEBUFFER);
+            i2c_write_lsb_first(framebuffer, 128 );
+            i2c_stop();
+        } else if(ws_display_conn) {
+            websocket_send(ws_display_conn, framebuffer, 128, WEBSOCKET_FRAME_OPCODE_BIN | WEBSOCKET_FRAME_FIN);
         }
-        i2c_stop();
-
-        if(matrix_intensity_updated) {
-            if((matrix_intensity_mutex != NULL) && (xSemaphoreTake(matrix_intensity_mutex, 0) == pdTRUE)) {
-                if(matrix_intensity_override && (matrix_intensity_override_level < AVR_I2C_NUM_LEVELS)) {
-                    send_fixed_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_override_level+1);
-                    send_fixed_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_override_level);
-                } else {
-                    send_intensity(AVR_I2C_CMD_INTENSITY_LOW, matrix_intensity_low);
-                    send_intensity(AVR_I2C_CMD_INTENSITY_HIGH, matrix_intensity_high);
-                }
-
-                matrix_intensity_updated = 0;
-
-                xSemaphoreGive(matrix_intensity_mutex);
-            }
-        }
-
-        while(i2c_start(MATRIX_I2C_ADDRESS, I2C_WRITE) != I2C_ACK) {
-            LOG("No ACK");
-            vTaskDelayMs(5);
-        }
-
-        i2c_write_byte(AVR_I2C_CMD_FRAMEBUFFER);
-        i2c_write_lsb_first(framebuffer, 128 );
-        i2c_stop();
 
         if(animation_running) {
             vTaskDelayMs(25);

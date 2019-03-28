@@ -17,7 +17,7 @@ void display_task(void *pvParameters)
 {
     display_message_queue = xQueueCreate(4, 1);
     i2c_master_init();
-    for(;;) {
+    for(int i = 0; i < 32; i++) {
         if(i2c_start(OLED_I2C_ADDRESS, I2C_WRITE) == I2C_ACK) {
             i2c_stop();
             display_type = DISPLAY_TYPE_OLED;
@@ -38,4 +38,9 @@ void display_task(void *pvParameters)
 
         vTaskDelayMs(25);
     }
+
+    WARNING("No display found. Giving up.");
+
+    display_type = DISPLAY_TYPE_NONE;
+    matrix_display_main();
 }
