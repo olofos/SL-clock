@@ -50,166 +50,6 @@ enum http_cgi_state cgi_not_found(struct http_request* request)
     return HTTP_CGI_DONE;
 }
 
-
-static const char *WWW_DIR = "/www";
-static const char *GZIP_EXT = ".gz";
-
-struct http_spiffs_response
-{
-    int fd;
-    char buf[128];
-};
-
-struct http_mime_map
-{
-    const char *ext;
-    const char *type;
-};
-
-static const struct http_mime_map mime_tab[] = {
-    {"html", "text/html"},
-    {"css", "text/css"},
-    {"js", "text/javascript"},
-    {"png", "image/png"},
-    {"svg", "image/svg+xml"},
-    {"json", "application/json"},
-    {NULL, "text/plain"},
-};
-
-static const char *get_mime_type(const char *path)
-{
-    const char *ext = strrchr(path, '.');
-
-    const struct http_mime_map *p;
-
-    if(!ext) {
-        return "text/plain";
-    }
-
-    ext++;
-
-    for(p = mime_tab; p->ext; p++) {
-        if(!strcmp(ext, p->ext)) {
-            break;
-        }
-    }
-    return p->type;
-}
-
-enum http_cgi_state cgi_spiffs(struct http_request* request)
-{
-    if(request->method != HTTP_METHOD_GET) {
-        return HTTP_CGI_NOT_FOUND;
-    }
-
-    if(!request->cgi_data) {
-        const char *base_filename;
-        const char *www_prefix;
-
-        if(request->cgi_arg) {
-            base_filename = request->cgi_arg;
-            www_prefix = "";
-        } else {
-            base_filename = request->path;
-            www_prefix = WWW_DIR;
-        }
-
-        char *filename;
-
-        filename = malloc(strlen(WWW_DIR) + strlen(base_filename) + strlen(GZIP_EXT) + 1);
-
-        if(!filename) {
-            return HTTP_CGI_NOT_FOUND;
-        }
-
-        strcpy(filename, www_prefix);
-        strcat(filename, base_filename);
-
-        uint8_t file_flag = 0;
-        int fd = -1;
-
-        if(!file_flag && (request->flags & HTTP_FLAG_ACCEPT_GZIP)) {
-            strcat(filename, GZIP_EXT);
-
-            fd = open(filename, O_RDONLY);
-
-            if(fd >= 0) {
-                INFO("Opened file '%s'", filename);
-
-                file_flag |= HTTP_FLAG_ACCEPT_GZIP;
-            } else {
-                INFO("File '%s' not found", filename);
-            }
-
-            filename[strlen(filename) - strlen(GZIP_EXT)] = 0;
-        }
-
-        if(!file_flag) {
-            fd = open(filename, O_RDONLY);
-
-            if(fd >= 0) {
-                INFO("Opened file '%s'", filename);
-            } else {
-                INFO("File '%s' not found", filename);
-            }
-        }
-
-        if(fd < 0) {
-            free(filename);
-            return HTTP_CGI_NOT_FOUND;
-        }
-
-        struct stat s;
-        fstat(fd, &s);
-        INFO("File size: %d", s.st_size);
-
-        const char *mime_type = get_mime_type(filename);
-
-        free(filename);
-
-
-        request->cgi_data = malloc(sizeof(struct http_spiffs_response));
-
-        if(!request->cgi_data) {
-            return HTTP_CGI_NOT_FOUND;
-        }
-
-        struct http_spiffs_response *resp = request->cgi_data;
-
-        resp->fd = fd;
-
-        http_begin_response(request, 200, mime_type);
-        http_write_header(request, "Cache-Control", "max-age=3600, must-revalidate");
-        http_set_content_length(request, s.st_size);
-
-        if(file_flag & HTTP_FLAG_ACCEPT_GZIP) {
-            http_write_header(request, "Content-Encoding", "gzip");
-        }
-        http_end_header(request);
-
-        return HTTP_CGI_MORE;
-    } else {
-        struct http_spiffs_response *resp = request->cgi_data;
-
-        int n = read(resp->fd, resp->buf, sizeof(resp->buf));
-
-        if(n > 0) {
-            http_write_bytes(request, resp->buf, n);
-        }
-
-        if(n < sizeof(resp->buf)) {
-            http_end_body(request);
-
-            close(resp->fd);
-            free(request->cgi_data);
-
-            return HTTP_CGI_DONE;
-        } else {
-            return HTTP_CGI_MORE;
-        }
-    }
-}
-
 struct cgi_forward_data {
     char *host;
     char *path;
@@ -352,12 +192,17 @@ struct http_url_handler http_url_tab[] = {
     {"/api/syslog-config.json", cgi_syslog_config, NULL},
     {"/api/led-matrix-config.json", cgi_led_matrix_config, NULL},
     {"/api/led-matrix-status.json", cgi_led_matrix_status, NULL},
-    {"/", cgi_spiffs, "/www/index.html"},
-    {"/*", cgi_spiffs, NULL},
+    {"/", cgi_fs, "/www/index.html"},
+    {"/*", cgi_fs, NULL},
     {NULL, NULL, NULL}
 };
 
 struct websocket_url_handler websocket_url_tab[] = {
+    {"/ws-echo", ws_echo_open, NULL, ws_echo_message, NULL},
+    {"/ws-in", ws_in_open, ws_in_close, ws_in_message, NULL},
+    {"/ws-out", ws_out_open, ws_out_close, NULL, NULL},
+    {"/ws-display", ws_display_open, ws_display_close, NULL, NULL},
+
     {NULL, NULL, NULL, NULL, NULL}
 };
 
