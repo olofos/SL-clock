@@ -108,7 +108,7 @@ eagle.app.flash.bin: $(OBJDIR)/user.elf
 	$(V)mv eagle.app.flash.bin $(BINDIR)/eagle.app.flash.bin
 
 flash: eagle.app.flash.bin
-	$(V)esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/$(BINDIR)/esp_init_data_default.bin
+	$(V)esptool.py -p /dev/ttyUSB0 --baud 921600 write_flash -fs 32m -fm dio -ff 40m 0x00000 $(BINDIR)/eagle.app.flash.bin 0x20000 $(BINDIR)/eagle.app.v6.irom0text.bin 0x3fc000 $(SDK_PATH)/bin/esp_init_data_default.bin
 
 mkspiffs/mkspiffs:
 	@echo Building mkspiffs
