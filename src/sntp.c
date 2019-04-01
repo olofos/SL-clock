@@ -31,7 +31,8 @@
 #define TIMER_COUNT (*((uint32_t*)RTC_SLP_CNT_VAL))
 
 static uint64_t sntp_base;
-static uint32_t sntp_tim_ref, sntp_cal;
+static uint32_t sntp_tim_ref;
+static uint32_t sntp_cal;
 
 
 struct ntp_packet
@@ -77,19 +78,22 @@ static time_t sntp_get_rtc_time(int32_t *us) {
 
 // Update RTC timer. Called by SNTP module each time it receives an update.
 static void sntp_update_rtc(time_t t, uint32_t us) {
-    // DEBUG: Compute and print drift
-    int64_t current = sntp_get_rtc_count();
+    int64_t old_count = sntp_get_rtc_count();
+    uint32_t old_cal = sntp_cal;
+    uint64_t old_us = (old_count * old_cal) >> RTC_FP_SHIFT;
 
     sntp_tim_ref = TIMER_COUNT;
     sntp_cal = system_rtc_clock_cali_proc();
 
-    sntp_base = (((uint64_t)us + (uint64_t)t * 1000000U)<<RTC_FP_SHIFT) / sntp_cal;
+    uint64_t new_us = (uint64_t)us + (uint64_t)t * 1000000U;
 
-    if((time_t)(sntp_base - current) > 1<<30)
+    sntp_base = (new_us << RTC_FP_SHIFT) / sntp_cal;
+
+    if((int64_t)(new_us - old_us) > 1<<30)
     {
-        INFO("Adjust: drift = %d000 ticks, cal = %d", (time_t)(sntp_base - current)/1000, (uint32_t)sntp_cal);
+        INFO("Adjust: large drift = %ld s, cal = %d", (int32_t)((new_us / 1000000) - (old_us / 1000000)), (int)sntp_cal);
     } else {
-        INFO("Adjust: drift = %d ticks, cal = %d", (int)(sntp_base - current), (uint32_t)sntp_cal);
+        INFO("Adjust: drift = %ld us, cal = %d", (int32_t)(new_us - old_us), (int)sntp_cal);
     }
 }
 
@@ -192,12 +196,13 @@ static int sntp_request(const char *server)
         INFO("Stratum: %d", response->stratum);
         INFO("Got timestamp %lu", t);
 
-        time_t old_time = time(0);
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
 
         if(app_status.obtained_time) {
-            if(old_time > t &&  old_time - t > 60) {
-                WARNING("Time is going backwards: %d %d", old_time, t);
-            } else if(t > old_time && t - old_time > 60) {
+            if(tv.tv_sec > t &&  tv.tv_sec - t > 60) {
+                WARNING("Time is going backwards: %d %d", tv.tv_sec, t);
+            } else if(t > tv.tv_sec && t - tv.tv_sec > 60) {
                 WARNING("More than one minute of lag");
             }
         }
@@ -208,11 +213,12 @@ static int sntp_request(const char *server)
 
         time_t new_time = time(0);
 
-        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&old_time));
-        LOG("Old time: %s", buf);
+
+        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&tv.tv_sec));
+        LOG("Old time: %s:%06ld", buf, tv.tv_usec);
 
         strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&new_time));
-        LOG("New time: %s", buf);
+        LOG("New time: %s:%06ld", buf, us);
 
         app_status.obtained_time = 1;
     } else {
