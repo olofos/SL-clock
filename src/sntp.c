@@ -76,6 +76,16 @@ static time_t sntp_get_rtc_time(int32_t *us) {
     return secs;
 }
 
+static void sntp_rtc_recal(void) {
+    uint32_t old_cal = sntp_cal;
+    uint64_t base = sntp_get_rtc_count();
+    sntp_tim_ref = TIMER_COUNT;
+    sntp_cal = system_rtc_clock_cali_proc();
+
+    sntp_base = (base * old_cal) / sntp_cal;
+}
+
+
 // Update RTC timer. Called by SNTP module each time it receives an update.
 static void sntp_update_rtc(time_t t, uint32_t us) {
     int64_t old_count = sntp_get_rtc_count();
@@ -252,7 +262,7 @@ static void sntp_init(void)
 
 void sntp_task(void *param)
 {
-    int delay = SNTP_DELAY;
+    int delay = 0;
     const char *servers[] = {SNTP_SERVERS};
 
     int current_server = 0;
@@ -261,22 +271,26 @@ void sntp_task(void *param)
 
     for(;;)
     {
-        while (!app_status.wifi_connected) {
-            vTaskDelayMs(100);
+        if(delay <= 0) {
+            if(app_status.wifi_connected) {
+                int ret = sntp_request(servers[current_server]);
+                if(ret == SNTP_ERR_KOD)
+                {
+                    current_server = (current_server + 1) % (sizeof(servers)/sizeof(servers[0]));
+                    LOG("Trying next server: %s", servers[current_server]);
+                    delay = SNTP_TIMEOUT_DELAY;
+                } else if(ret == ERR_TIMEOUT) {
+                    delay = SNTP_TIMEOUT_DELAY;
+                } else {
+                    delay = SNTP_DELAY;
+                }
+            } else {
+                delay = 1;
+            }
         }
+        sntp_rtc_recal();
 
-        int ret = sntp_request(servers[current_server]);
-        if(ret == SNTP_ERR_KOD)
-        {
-            current_server = (current_server + 1) % (sizeof(servers)/sizeof(servers[0]));
-            LOG("Trying next server: %s", servers[current_server]);
-            delay = SNTP_TIMEOUT_DELAY;
-        } else if(ret == ERR_TIMEOUT) {
-            delay = SNTP_TIMEOUT_DELAY;
-        } else {
-            delay = SNTP_DELAY;
-        }
-
-        vTaskDelayMs(delay * 1000);
+        vTaskDelayMs(1000);
+        delay--;
     }
 }
