@@ -46,6 +46,7 @@ enum log_system
     LOG_SYS_CONFIG,
     LOG_SYS_DISPLAY,
     LOG_SYS_LOG,
+    LOG_SYS_HUMIDITY,
 
     LOG_NUM_SYSTEMS,
 

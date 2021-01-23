@@ -2,7 +2,7 @@ V=@
 
 SOURCES := fonts.c journey.c journey-task.c config.c oled_framebuffer.c matrix_framebuffer.c framebuffer.c oled_display.c matrix_display.c display.c display-message.c \
     json.c json-util.c json-http.c  log.c logo-paw-64x64.c sntp.c sh1106.c timezone-db.c uart.c user_main.c wifi-task.c wifi-list.c wifi-logic.c \
-    i2c-master.c http-server-task.c http-server-url-handlers.c syslog.c json-writer.c
+    i2c-master.c http-server-task.c http-server-url-handlers.c syslog.c json-writer.c humidity-task.c humidity.c
 
 TARGET=user
 
@@ -121,7 +121,7 @@ build-web-app:
 	$(V)$(MAKE) -s -C${WEBAPPDIR}/
 
 spiffs-image: mkspiffs/mkspiffs build-web-app
-	$(V)rm data/www/*
+	$(V)rm -f data/www/*
 	$(V)cp ${WEBAPPDIR}/dist/* data/www/
 	@echo Building spiffs image
 	$(V)mkspiffs/mkspiffs -b 4096 -p 128 -s 196608 -c data/ $(BINDIR)/spiffs.bin

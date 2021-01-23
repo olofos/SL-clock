@@ -8,10 +8,33 @@
 #include "log.h"
 #define LOG_SYS LOG_SYS_DISPLAY
 
+static const const char *debug_message(enum display_message message)
+{
+    switch(message) {
+    case DISPLAY_MESSAGE_NO_WIFI:
+        return "MESSAGE_NO_WIFI";
+
+    case DISPLAY_MESSAGE_NO_JOURNIES:
+        return "MESSAGE_NO_JOURNIES";
+
+    case DISPLAY_MESSAGE_WIFI_INFO:
+        return "MESSAGE_WIFI_INFO";
+
+    case DISPLAY_MESSAGE_NONE:
+        return "MESSAGE_NONE";
+
+    default:
+        return "MESSAGE_UNKNOWN";
+        break;
+    }
+}
+
+
 void display_post_message(enum display_message message)
 {
     if(display_message_queue) {
         uint8_t msg = message;
+        LOG("Message: %s", debug_message(message));
         xQueueSend(display_message_queue, &msg, 0);
     } else {
         LOG("Trying to post a message before the queue was created");

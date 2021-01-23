@@ -111,7 +111,7 @@ void spiffs_fs_init(void)
     }
 }
 
-#define MAX_TASKS 8
+#define MAX_TASKS 9
 
 #define TASK_WIFI 0
 #define TASK_DISPLAY 1
@@ -120,8 +120,8 @@ void spiffs_fs_init(void)
 #define TASK_JOURNEY 4
 #define TASK_HTTPD 5
 #define TASK_SYSLOG 6
-
 #define TASK_LED_MATRIX 7
+#define TASK_HUMIDITY 8
 
 xTaskHandle task_handle[MAX_TASKS];
 const char *task_names[MAX_TASKS+1] = {
@@ -133,8 +133,11 @@ const char *task_names[MAX_TASKS+1] = {
     [TASK_HTTPD] = "httpd",
     [TASK_SYSLOG] = "syslog",
     [TASK_LED_MATRIX] = " led",
+    [TASK_HUMIDITY] = "humidity",
     NULL
 };
+
+void humidity_task(void *pvParameters);
 
 void user_init(void)
 {
@@ -157,7 +160,8 @@ void user_init(void)
     TaskCreate(&display_task, task_names[TASK_DISPLAY], 384, NULL, 3, &task_handle[TASK_DISPLAY]);
     TaskCreate(&sntp_task, task_names[TASK_SNTP], 384, NULL, 6, &task_handle[TASK_SNTP]);
     TaskCreate(&timezone_db_task, task_names[TASK_TZDB], 512, NULL, 5, &task_handle[TASK_TZDB]);
-    TaskCreate(&journey_task, task_names[TASK_JOURNEY], 1024, NULL, 4, &task_handle[TASK_JOURNEY]);
+    // TaskCreate(&journey_task, task_names[TASK_JOURNEY], 1024, NULL, 4, &task_handle[TASK_JOURNEY]);
+    TaskCreate(&humidity_task, task_names[TASK_HUMIDITY], 1024, NULL, 4, &task_handle[TASK_HUMIDITY]);
     TaskCreate(&http_server_task, task_names[TASK_HTTPD], 1024, NULL, 4, &task_handle[TASK_HTTPD]);
     TaskCreate(&syslog_task, task_names[TASK_SYSLOG], 384, NULL, 2, &task_handle[TASK_SYSLOG]);
 }

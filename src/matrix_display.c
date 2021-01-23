@@ -32,7 +32,7 @@
 #define X_ICON 1
 #define X_TIME 12
 
-extern struct websocket_connection *ws_display_conn;
+// extern struct websocket_connection *ws_display_conn;
 
 static int16_t journey_shift[2];
 
@@ -292,8 +292,8 @@ void matrix_display_main(void)
             i2c_write_byte(AVR_I2C_CMD_FRAMEBUFFER);
             i2c_write_lsb_first(framebuffer, 128 );
             i2c_stop();
-        } else if(ws_display_conn) {
-            websocket_send(ws_display_conn, framebuffer, 128, WEBSOCKET_FRAME_OPCODE_BIN | WEBSOCKET_FRAME_FIN);
+        // } else if(ws_display_conn) {
+        //     websocket_send(ws_display_conn, framebuffer, 128, WEBSOCKET_FRAME_OPCODE_BIN | WEBSOCKET_FRAME_FIN);
         }
 
         if(animation_running) {

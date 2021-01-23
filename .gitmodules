@@ -1,9 +1,6 @@
 [submodule "http-sm"]
 	path = http-sm
 	url = git@github.com:olofos/http-sm.git
-[submodule "web-app"]
-	path = web-app
-	url = git@github.com:olofos/SL-clock-web-app.git
 [submodule "mkspiffs"]
 	path = mkspiffs
 	url = https://github.com/olofos/mkspiffs.git

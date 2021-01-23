@@ -76,14 +76,10 @@ void oled_blit(int16_t x, int16_t y, uint16_t w, uint16_t h, const uint8_t *data
 
 void oled_splash(void)
 {
-    oled_clear();
-
     for(int y = 0; y < 8; y++)
     {
         oled_blit(32, y * 8, 64, 8, &paw_64x64[y * 64], 64);
     }
-
-    oled_display();
 }
 
 static void oled_draw_line_v(int16_t x, int16_t y1, int16_t y2)
