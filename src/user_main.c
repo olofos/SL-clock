@@ -106,6 +106,8 @@ void spiffs_fs_init(void)
     if(ret < 0)
     {
         ERROR("Could not mount SPIFFS volume (%d)", ret);
+    } else {
+        LOG("SPIFFS volume mounted");
     }
 }
 

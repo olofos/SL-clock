@@ -166,6 +166,217 @@ enum http_cgi_state cgi_forward(struct http_request* request)
     }
 }
 
+
+
+const char *simple_response = "This is a response from \'cgi_simple\'";
+const char *stream_response = "This is a response from \'cgi_stream\'";
+
+enum http_cgi_state cgi_simple(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    const char *response = simple_response;
+
+    http_begin_response(request, 200, "text/plain");
+    http_set_content_length(request, strlen(response));
+    http_end_header(request);
+
+    http_write_string(request, response);
+
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+enum http_cgi_state cgi_stream(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    if(!request->cgi_data) {
+        http_begin_response(request, 200, "text/plain");
+        http_end_header(request);
+
+        request->cgi_data = malloc(1);
+
+        return HTTP_CGI_MORE;
+    } else {
+        const char *response = stream_response;
+
+        http_write_string(request, response);
+        http_end_body(request);
+
+        free(request->cgi_data);
+
+        return HTTP_CGI_DONE;
+    }
+}
+
+enum http_cgi_state cgi_query(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_GET) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    http_begin_response(request, 200, "text/plain");
+    http_end_header(request);
+
+    http_write_string(request, "This is a response from \'cgi_query\'\r\n");
+    http_write_string(request, "The parameters were:\r\n");
+
+    const char *sa = http_get_query_arg(request, "a");
+    const char *sb = http_get_query_arg(request, "b");
+
+    if(sa) {
+        http_write_string(request, "a = ");
+        http_write_string(request, sa);
+        http_write_string(request, "\r\n");
+    }
+
+    if(sb) {
+        http_write_string(request, "b = ");
+        http_write_string(request, sb);
+        http_write_string(request, "\r\n");
+    }
+
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+enum http_cgi_state cgi_post(struct http_request* request)
+{
+    if(request->method != HTTP_METHOD_POST) {
+        return HTTP_CGI_NOT_FOUND;
+    }
+
+    char data[32];
+    int len = 0;
+
+    while(request->state == HTTP_STATE_SERVER_READ_BODY) {
+        int c = http_getc(request);
+        if(c <= 0) {
+            break;
+        }
+        if(len < sizeof(data) - 1) {
+            data[len++] = c;
+        }
+    }
+
+    data[len] = 0;
+    LOG("Post data: \"%s\"", data);
+
+    http_begin_response(request, 200, "text/plain");
+    http_end_header(request);
+
+    http_write_string(request, "This is a response from \'cgi_post\'\r\nYou posted: \"");
+    http_write_string(request, data);
+    http_write_string(request, "\"\r\n");
+
+    http_end_body(request);
+
+    return HTTP_CGI_DONE;
+}
+
+int ws_echo_open(struct websocket_connection* conn, struct http_request* request)
+{
+    return 1;
+}
+
+void ws_echo_message(struct websocket_connection* conn)
+{
+    char *str = malloc(conn->frame_length+1);
+    int n = websocket_read(conn, str, conn->frame_length);
+    LOG("n=%d", n);
+    LOG("len=%d", (int)conn->frame_length);
+    str[n] = 0;
+    if(n < conn->frame_length) {
+        LOG("Expected %d bytes but received %d", (int)conn->frame_length, n);
+    }
+    websocket_send(conn, str, conn->frame_length, conn->frame_opcode);
+
+    if((conn->frame_opcode & WEBSOCKET_FRAME_OPCODE) == WEBSOCKET_FRAME_OPCODE_TEXT) {
+        LOG("Message: %s", str);
+    } else {
+        LOG("Binary message of length %d", conn->frame_length);
+    }
+    free(str);
+}
+
+struct websocket_connection* ws_in_conn = 0;
+struct websocket_connection* ws_out_conn = 0;
+
+int ws_in_open(struct websocket_connection* conn, struct http_request* request)
+{
+    if(ws_in_conn == 0) {
+        LOG("WS: new in connection %d", request->fd);
+        ws_in_conn = conn;
+        return 1;
+    }
+    return 0;
+}
+
+void ws_in_close(struct websocket_connection* conn)
+{
+    ws_in_conn = 0;
+}
+
+int ws_out_open(struct websocket_connection* conn, struct http_request* request)
+{
+    if(ws_out_conn == 0) {
+        LOG("WS: new out connection %d", request->fd);
+        ws_out_conn = conn;
+        return 1;
+    }
+    return 0;
+}
+
+void ws_out_close(struct websocket_connection* conn)
+{
+    ws_out_conn = 0;
+}
+
+void ws_in_message(struct websocket_connection* conn)
+{
+    uint8_t *str = malloc(conn->frame_length+1);
+    int n = websocket_read(conn, str, conn->frame_length);
+
+    if(n > 0) {
+        str[n] = 0;
+
+        if(ws_out_conn) {
+            websocket_send(ws_out_conn, str, n, conn->frame_opcode);
+        } else {
+            char *msg = "There is no out connection";
+            websocket_send(conn, msg, strlen(msg), WEBSOCKET_FRAME_OPCODE_TEXT | WEBSOCKET_FRAME_FIN);
+        }
+    }
+
+    free(str);
+}
+
+struct websocket_connection* ws_display_conn = 0;
+
+int ws_display_open(struct websocket_connection* conn, struct http_request* request)
+{
+    if(ws_display_conn == 0) {
+        LOG("WS: new in connection %d", request->fd);
+        ws_display_conn = conn;
+        return 1;
+    }
+    return 0;
+}
+
+void ws_display_close(struct websocket_connection* conn)
+{
+    ws_display_conn = 0;
+}
+
+
+
 struct cgi_forward_data journies_forward_data = {
     .host = "api.sl.se",
     .path = "/api2/realtimedeparturesV4.json?key=" KEY_SL_REALTIME "&TimeWindow=60",
@@ -182,6 +393,12 @@ struct cgi_forward_data places_forward_data = {
 
 
 struct http_url_handler http_url_tab[] = {
+    {"/simple", cgi_simple, NULL},
+    {"/stream", cgi_stream, NULL},
+    {"/query", cgi_query, NULL},
+    {"/post", cgi_post, NULL},
+    {"/wildcard/*", cgi_simple, NULL},
+
     {"/api/wifi-scan.json", cgi_wifi_scan, NULL},
     {"/api/wifi-list.json", cgi_wifi_list, NULL},
     {"/api/journies-config.json", cgi_journey_config, NULL},
