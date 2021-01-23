@@ -16,6 +16,7 @@ TSTBINDIR := test/bin/
 TSTDEPDIR := test/.deps/
 RESULTDIR := test/results/
 WEBAPPDIR := web-app
+HTTPSMDIR := http-sm
 
 BUILD_DIRS = $(OBJDIR) $(DEPDIR) $(BINDIR) $(RESULTDIR) $(TSTOBJDIR) $(TSTBINDIR) $(TSTDEPDIR)
 
@@ -39,10 +40,11 @@ CFLAGS = -DFREERTOS=1 -std=gnu99 -Os -g -Wpointer-arith -Wundef -Wall -Wl,-EL -f
 
 LDFILE = ld/eagle.app.v6.ld
 
-LDFLAGS = -L$(SDK_PATH)/lib -Lhttp-sm/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lhttp-sm -lwps -Wl,--end-group
+LDFLAGS = -L$(SDK_PATH)/lib -L$(HTTPSMDIR)/lib -Wl,--gc-sections -nostdlib -T$(LDFILE) -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lcirom -lcrypto -lespconn -lespnow -lfreertos -lgcc -lhal -llwip -lmain -lmirom -lnet80211 -lnopoll -lphy -lpp -lpwm -lsmartconfig -lspiffs -lssl -lwpa obj/libuser.a -lhttp-sm -lwps -Wl,--end-group
 
 INCLUDES := $(INCLUDES)
-INCLUDES += -Ihttp-sm/include
+INCLUDES += -I$(CURDIR)/src
+INCLUDES += -I$(HTTPSMDIR)/include
 INCLUDES += -I$(SDK_PATH)/include
 INCLUDES += -I$(SDK_PATH)/extra_include
 INCLUDES += -I$(SDK_PATH)/driver_lib/include
@@ -78,8 +80,8 @@ $(TSTBINDIR)test_wifi-logic: $(TSTOBJDIR)wifi-logic.o
 -include $(DEPS)
 -include $(TST_DEPS)
 
-http-sm/lib/libhttp-sm.a:
-	$(V)$(MAKE) CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -Chttp-sm/ lib/libhttp-sm.a
+$(HTTPSMDIR)/lib/libhttp-sm.a:
+	$(V)$(MAKE) CC="$(CC)" AR="$(AR)" CFLAGS="$(CFLAGS) -I../src/ -DLOG_SYS=LOG_SYS_HTTP" V=$(V) -C$(HTTPSMDIR)/ lib/libhttp-sm.a
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.c | esp-open-sdk/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
 	@echo CC $@
@@ -90,7 +92,7 @@ $(OBJDIR)/libuser.a: $(OBJ)
 	@echo AR $@
 	$(V)$(AR) ru $@ $^
 
-$(OBJDIR)/user.elf : $(OBJDIR)/libuser.a http-sm/lib/libhttp-sm.a
+$(OBJDIR)/user.elf : $(OBJDIR)/libuser.a $(HTTPSMDIR)/lib/libhttp-sm.a
 	@echo LINKING $@
 	$(V)$(CC) $(LDFLAGS) -o $@
 
@@ -179,7 +181,7 @@ $(TSTBINDIR)test_%: $(TSTOBJDIR)test_%.o
 clean:
 	@echo Cleaning
 	$(V)-rm -f $(OBJ) $(OBJDIR)/libuser.a $(OBJDIR)/user.elf $(TSTOBJDIR)/*.o $(TSTBINDIR)/test_* $(RESULTDIR)/*.txt $(DEPDIR)/*.d $(BINDIR)/eagle.app.v6.text.bin $(BINDIR)/eagle.app.v6.rodata.bin $(BINDIR)/eagle.app.v6.data.bin $(BINDIR)/eagle.app.v6.irom0text.bin $(BINDIR)/eagle.app.flash.bin
-	$(V)$(MAKE) -Chttp-sm clean
+	$(V)$(MAKE) -C$(HTTPSMDIR) clean
 
 .PRECIOUS: $(TSTBINDIR)/test_%
 .PRECIOUS: $(DEPDIR)/%.d
