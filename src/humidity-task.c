@@ -18,6 +18,19 @@ static xSemaphoreHandle humidity_mutex = NULL;
 
 struct measurement *humidity_first_measurement = NULL;
 
+static char hostname[32];
+
+void humidity_set_hostname(const char *name)
+{
+    strncpy(hostname, name, sizeof(hostname)-1);
+}
+
+const char *humidity_get_hostname(void)
+{
+    return hostname;
+}
+
+
 void humidity_take_mutex(void)
 {
     for(;;) {
@@ -73,7 +86,7 @@ static int humidity_update(void)
     struct http_request request;
     http_request_init(&request);
 
-    request.host = "192.168.1.100";
+    request.host = hostname;
     request.path = "/api/measurements/newest";
     request.port = 3001;
 
@@ -106,7 +119,6 @@ static int humidity_update(void)
 
     return 1;
 }
-
 
 void humidity_task(void *pvParameters)
 {

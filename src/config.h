@@ -14,10 +14,12 @@ int config_load_wifi(struct json_stream *json);
 int config_load_journies(struct json_stream *json);
 int config_load_timezone(struct json_stream *json);
 int config_load_led_matrix(struct json_stream *json);
+int config_load_humidity_host(struct json_stream *json);
 
 void config_save_wifi(struct json_writer *json, const char *name);
 void config_save_journies(struct json_writer *json, const char *name);
 void config_save_timezone(struct json_writer *json, const char *name);
 void config_save_led_matrix(struct json_writer *json, const char *name);
+void config_save_humidity_host(struct json_writer *json, const char *name);
 
 #endif

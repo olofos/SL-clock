@@ -25,5 +25,7 @@ void humidity_take_mutex(void);
 int humidity_take_mutex_noblock(void);
 void humidity_give_mutex(void);
 
+void humidity_set_hostname(const char *name);
+const char *humidity_get_hostname(void);
 
 #endif

@@ -14,6 +14,7 @@
 #include "journey-task.h"
 #include "wifi-task.h"
 #include "timezone-db.h"
+#include "humidity.h"
 
 #include "matrix_display.h"
 
@@ -31,13 +32,15 @@ static char* nul_strncpy(char *dest, const char *src, size_t n)
 #define JOURNIES 1
 #define TIMEZONE 2
 #define LED_MATRIX 3
-#define NUM_CONFIG 4
+#define HUMIDITY_HOST 4
+#define NUM_CONFIG 5
 
 static const char* config_names[] = {
     [WIFI] = "wifi",
     [JOURNIES] = "journies",
     [TIMEZONE] = "timezone",
     [LED_MATRIX] = "led-matrix",
+    [HUMIDITY_HOST] = "humidity-host",
 };
 
 static config_load_func config_load_funcs[] = {
@@ -45,6 +48,7 @@ static config_load_func config_load_funcs[] = {
     [JOURNIES] = config_load_journies,
     [TIMEZONE] = config_load_timezone,
     [LED_MATRIX] = config_load_led_matrix,
+    [HUMIDITY_HOST] = config_load_humidity_host,
 };
 
 static config_save_func config_save_funcs[] = {
@@ -52,6 +56,7 @@ static config_save_func config_save_funcs[] = {
     [JOURNIES] = config_save_journies,
     [TIMEZONE] = config_save_timezone,
     [LED_MATRIX] = config_save_led_matrix,
+    [HUMIDITY_HOST] = config_save_humidity_host,
 };
 
 int config_load_wifi(json_stream *json)
@@ -279,6 +284,18 @@ int config_load_led_matrix(json_stream *json)
     return 0;
 }
 
+int config_load_humidity_host(json_stream *json)
+{
+    if(json_expect(json, JSON_STRING))
+    {
+        humidity_set_hostname(json_get_string(json, 0));
+        printf("Humidity Hostname: %s\n", humidity_get_hostname());
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 void config_save_wifi(struct json_writer *json, const char *name)
 {
     json_writer_begin_array(json, name);
@@ -324,6 +341,11 @@ void config_save_journies(struct json_writer *json, const char *name)
 void config_save_timezone(struct json_writer *json, const char *name)
 {
     json_writer_write_string(json, name, timezone_get_timezone());
+}
+
+void config_save_humidity_host(struct json_writer *json, const char *name)
+{
+    json_writer_write_string(json, name, humidity_get_hostname());
 }
 
 void config_save_led_matrix(struct json_writer *json, const char *name)
